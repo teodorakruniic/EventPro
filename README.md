@@ -26,4 +26,6 @@ Projekt je trenutno v fazi priprave dokumentacije. Mapi `frontend/` in `backend/
 
 ## Razvojni proces
 
-Uporabljamo **GitHub Flow**: za spremembo ustvarimo novo vejo iz `main`, pripravimo commit, odpremo pull request in po preverjanju združimo spremembe v `main`. Neposredne spremembe in prisilno prepisovanje veje `main` niso dovoljeni.
+Uporabljamo **GitHub Flow**: za spremembo ustvarimo novo vejo iz `main`, pripravimo commit, odpremo pull request in po preverjanju združimo spremembe v `main`. Neposredne spremembe in prisilno prepisovanje veje `main` niso dovoljeni. Projekt uporablja GitHub Flow. Spremembe razvijamo v ločenih vejah in jih v glavno vejo `main` združujemo prek pull requestov.
+
+
