@@ -1,0 +1,22 @@
+
+services:
+  database:
+    image: postgres:17
+    container_name: eventpro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eventpro
+      POSTGRES_PASSWORD: eventpro_dev
+      POSTGRES_DB: eventpro_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - eventpro_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventpro -d eventpro_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  eventpro_postgres_data:
