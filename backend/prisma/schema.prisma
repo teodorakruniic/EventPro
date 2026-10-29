@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ORGANIZER
+  SPEAKER
+  ATTENDEE
+}
+
+enum ConferenceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TalkStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole @default(ATTENDEE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  conferences             Conference[]
+  talks                   Talk[]                   @relation("TalkSpeaker")
+  conferenceRegistrations ConferenceRegistration[]
+  talkReservations        TalkReservation[]
+}
+
+model Conference {
+  id          String           @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  location    String
+  startsAt    DateTime
+  endsAt      DateTime
+  status      ConferenceStatus @default(DRAFT)
+  organizerId String           @db.Uuid
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  organizer     User                     @relation(fields: [organizerId], references: [id])
+  rooms         Room[]
+  talks         Talk[]
+  registrations ConferenceRegistration[]
+}
+
+model Room {
+  id           String @id @default(uuid()) @db.Uuid
+  name         String
+  capacity     Int
+  conferenceId String @db.Uuid
+
+  conference Conference @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+  talks      Talk[]
+
+  @@unique([conferenceId, name])
+}
+
+model Talk {
+  id           String     @id @default(uuid()) @db.Uuid
+  title        String
+  description  String
+  status       TalkStatus @default(PENDING)
+  speakerId    String     @db.Uuid
+  conferenceId String     @db.Uuid
+  roomId       String?    @db.Uuid
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  speaker      User              @relation("TalkSpeaker", fields: [speakerId], references: [id])
+  conference   Conference        @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+  room         Room?             @relation(fields: [roomId], references: [id])
+  reservations TalkReservation[]
+}
+
+model ConferenceRegistration {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  conferenceId String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id])
+  conference Conference @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conferenceId])
+}
+
+model TalkReservation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  talkId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  talk Talk @relation(fields: [talkId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, talkId])
+}
