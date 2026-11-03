@@ -4,9 +4,11 @@ import cors from "cors";
 import "dotenv/config";
 
 import { prisma } from "./lib/prisma.js";
+
 import authRoutes from "./routes/auth.routes.js";
 import conferenceRoutes from "./routes/conference.routes.js";
 import talkRoutes from "./routes/talk.routes.js";
+import scheduleRoutes from "./routes/schedule.routes.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -17,6 +19,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/conferences", conferenceRoutes);
 app.use("/api/talks", talkRoutes);
+app.use("/api/schedule", scheduleRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({

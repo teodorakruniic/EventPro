@@ -22,6 +22,9 @@ import SubmitTalk from "./pages/SubmitTalk";
 import MyTalks from "./pages/MyTalks";
 import ReviewTalks from "./pages/ReviewTalks";
 
+import ConferenceSchedule from "./pages/ConferenceSchedule";
+import ConferenceProgram from "./pages/ConferenceProgram";
+
 import "./App.css";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -104,6 +107,11 @@ function AppRoutes() {
         />
 
         <Route
+          path="/conferences/:id/program"
+          element={<ConferenceProgram />}
+        />
+
+        <Route
           path="/my-conferences"
           element={
             <OrganizerRoute>
@@ -153,6 +161,15 @@ function AppRoutes() {
           element={
             <OrganizerRoute>
               <ReviewTalks />
+            </OrganizerRoute>
+          }
+        />
+
+        <Route
+          path="/schedule"
+          element={
+            <OrganizerRoute>
+              <ConferenceSchedule />
             </OrganizerRoute>
           }
         />
