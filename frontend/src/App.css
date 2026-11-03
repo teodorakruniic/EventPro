@@ -2952,4 +2952,89 @@
   }
 }
 
+/* ATTENDEE PERSONAL SCHEDULE */
+
+.my-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.my-schedule-card {
+  margin: 0;
+}
+
+.my-schedule-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.my-schedule-card-top h2 {
+  margin: 10px 0;
+  color: #26354a;
+  font-size: 20px;
+}
+
+.my-schedule-card-top p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.my-schedule-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.my-schedule-actions,
+.program-reservation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.my-schedule-actions {
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.program-attendee-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 18px 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.program-attendee-toolbar p {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+}
+
+@media (max-width: 650px) {
+  .my-schedule-card-top,
+  .program-attendee-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 

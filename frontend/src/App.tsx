@@ -24,6 +24,8 @@ import ReviewTalks from "./pages/ReviewTalks";
 
 import ConferenceSchedule from "./pages/ConferenceSchedule";
 import ConferenceProgram from "./pages/ConferenceProgram";
+import MySchedule from "./pages/MySchedule";
+import MyProfile from "./pages/MyProfile";
 
 import "./App.css";
 
@@ -47,6 +49,14 @@ function SpeakerRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   return user?.role === "SPEAKER"
+    ? children
+    : <Navigate to="/dashboard" replace />;
+}
+
+function AttendeeRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  return user?.role === "ATTENDEE"
     ? children
     : <Navigate to="/dashboard" replace />;
 }
@@ -97,8 +107,22 @@ function AppRoutes() {
         />
 
         <Route
+          path="/profile"
+          element={<MyProfile />}
+        />
+
+        <Route
           path="/conferences"
           element={<Conferences />}
+        />
+
+        <Route
+          path="/conferences/new"
+          element={
+            <OrganizerRoute>
+              <CreateConference />
+            </OrganizerRoute>
+          }
         />
 
         <Route
@@ -112,28 +136,19 @@ function AppRoutes() {
         />
 
         <Route
-          path="/my-conferences"
-          element={
-            <OrganizerRoute>
-              <MyConferences />
-            </OrganizerRoute>
-          }
-        />
-
-        <Route
-          path="/conferences/new"
-          element={
-            <OrganizerRoute>
-              <CreateConference />
-            </OrganizerRoute>
-          }
-        />
-
-        <Route
           path="/conferences/:id/edit"
           element={
             <OrganizerRoute>
               <CreateConference />
+            </OrganizerRoute>
+          }
+        />
+
+        <Route
+          path="/my-conferences"
+          element={
+            <OrganizerRoute>
+              <MyConferences />
             </OrganizerRoute>
           }
         />
@@ -171,6 +186,15 @@ function AppRoutes() {
             <OrganizerRoute>
               <ConferenceSchedule />
             </OrganizerRoute>
+          }
+        />
+
+        <Route
+          path="/my-schedule"
+          element={
+            <AttendeeRoute>
+              <MySchedule />
+            </AttendeeRoute>
           }
         />
       </Route>

@@ -1,0 +1,662 @@
+.seat-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 20, 36, 0.65);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.seat-picker-dialog {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.2);
+  color: #17233b;
+}
+.seat-picker-header,
+.seat-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e9edf3;
+}
+.seat-picker-header h2 {
+  margin: 0;
+  font-size: 23px;
+}
+.seat-picker-header p {
+  margin: 4px 0 0;
+  color: #65718a;
+}
+.seat-picker-icon-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #344054;
+}
+.seat-picker-body {
+  padding: 24px;
+}
+.seat-picker-stage {
+  text-align: center;
+  background: #edf1f7;
+  padding: 13px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  margin-bottom: 28px;
+}
+.seat-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+}
+.seat-picker-seat {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 1px;
+  border-radius: 9px;
+  border: 1px solid #dce3ef;
+  background: #f4f7fc;
+  color: #33415e;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.seat-picker-seat:hover:not(:disabled) {
+  border-color: #5079dd;
+  background: #eaf0ff;
+}
+.seat-picker-seat.is-occupied {
+  background: #e8ebef;
+  color: #9da5b1;
+  cursor: not-allowed;
+}
+.seat-picker-seat.is-selected {
+  background: #d6f5e7;
+  border-color: #16a66c;
+  color: #08724a;
+}
+.seat-picker-seat.is-mine {
+  outline: 2px solid #0f8a61;
+  outline-offset: 1px;
+}
+.seat-picker-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+  color: #5a6780;
+  font-size: 13px;
+}
+.seat-picker-count {
+  text-align: center;
+  color: #667085;
+  font-size: 13px;
+}
+.seat-picker-selection {
+  font-size: 14px;
+  margin-top: 20px;
+}
+.seat-picker-error {
+  color: #b42318;
+}
+.seat-picker-success {
+  color: #08724a;
+}
+.seat-picker-footer {
+  border-top: 1px solid #e9edf3;
+  border-bottom: 0;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.seat-picker-footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 15px;
+  border-radius: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #d6dce7;
+}
+.seat-picker-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.seat-picker-secondary {
+  background: #fff;
+  color: #344054;
+}
+.seat-picker-danger {
+  background: #fff;
+  color: #b42318;
+}
+.seat-picker-primary {
+  background: #244cb2 !important;
+  color: white;
+  border-color: #244cb2 !important;
+}
+@media (max-width: 550px) {
+  .seat-picker-backdrop {
+    padding: 8px;
+  }
+  .seat-picker-body {
+    padding: 15px;
+  }
+  .seat-picker-grid {
+    gap: 3px;
+  }
+  .seat-picker-seat {
+    padding: 7px 0;
+    font-size: 9px;
+  }
+  .seat-picker-seat svg {
+    width: 15px;
+  }
+  .seat-picker-header,
+  .seat-picker-footer {
+    padding: 15px;
+  }
+}
+
+.seat-picker-seat {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.seat-picker-seat span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.seat-picker-seat.selected {
+  background: #dcfce7 !important;
+  border: 2px solid #16a34a !important;
+  color: #15803d !important;
+}
+
+.seat-picker-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.seat-picker-summary strong {
+  color: #1e293b;
+  margin-right: 4px;
+}
+
+.seat-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+}
+
+.seat-picker-modal {
+  box-sizing: border-box;
+  width: min(100%, 760px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px;
+  border-radius: 24px;
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 25px 80px rgba(15, 23, 42, 0.25);
+}
+
+.seat-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.seat-picker-header h2 {
+  margin: 5px 0;
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.6px;
+}
+
+.seat-picker-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.seat-picker-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+.seat-picker-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.seat-picker-summary span {
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.seat-picker-summary strong {
+  color: #0f172a;
+  margin-right: 5px;
+}
+
+.seat-picker-stage {
+  width: 78%;
+  box-sizing: border-box;
+  margin: 0 auto 30px;
+  padding: 13px;
+  border-radius: 8px 8px 24px 24px;
+  background: linear-gradient(135deg, #e0e7ff, #dbeafe);
+  color: #334155;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.seat-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto 25px;
+}
+
+.seat-picker-seat {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px 2px;
+  border: 1px solid #dbe3ef;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #475569;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.seat-picker-seat svg {
+  width: 19px;
+  height: 19px;
+}
+
+.seat-picker-seat span {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: inherit;
+}
+
+.seat-picker-seat:hover:not(:disabled) {
+  background: #eef2ff;
+  border-color: #818cf8;
+}
+
+.seat-picker-seat.selected {
+  background: #dcfce7;
+  border: 2px solid #16a34a;
+  color: #15803d;
+}
+
+.seat-picker-seat.mine {
+  background: #dbeafe;
+  border: 2px solid #3b82f6;
+  color: #1d4ed8;
+}
+
+.seat-picker-seat.occupied {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.seat-picker-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 20px 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.seat-picker-current {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+}
+
+.seat-picker-success {
+  padding: 12px 15px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.seat-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.seat-picker-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 120px;
+  min-height: 42px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.seat-picker-actions .primary-button {
+  background: #4f46e5;
+  color: white;
+}
+
+.seat-picker-actions .primary-button:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .seat-picker-overlay {
+    padding: 10px;
+  }
+
+  .seat-picker-modal {
+    padding: 20px 14px;
+    border-radius: 16px;
+  }
+
+  .seat-picker-header h2 {
+    font-size: 21px;
+  }
+
+  .seat-picker-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .seat-picker-seat {
+    min-height: 48px;
+  }
+
+  .seat-picker-stage {
+    width: 90%;
+  }
+
+  .seat-picker-actions {
+    flex-direction: column;
+  }
+
+  .seat-picker-actions button {
+    width: 100%;
+  }
+}
+/* Modal footer */
+
+.seat-picker-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.seat-picker-actions button {
+  flex: 0 0 auto;
+  width: auto !important;
+  min-width: 130px;
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.seat-picker-actions button:first-child {
+  margin-right: auto;
+}
+
+.seat-picker-actions .secondary-button {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.seat-picker-actions .secondary-button:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.seat-picker-actions .primary-button:not(:disabled) {
+  background: #4f46e5;
+  color: #ffffff;
+  border: 1px solid #4f46e5;
+}
+
+.seat-picker-actions .primary-button:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .seat-picker-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .seat-picker-actions button {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+}
+/* Seat picker footer buttons */
+
+.seat-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 22px;
+}
+
+.seat-picker-actions button {
+  width: auto !important;
+  min-width: unset;
+  min-height: 42px;
+  padding: 11px 20px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+/* Refresh */
+.seat-picker-actions button:first-child {
+  margin-right: auto;
+  padding: 11px 15px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.seat-picker-actions button:first-child:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #334155;
+}
+
+/* Cancel reservation */
+.seat-picker-actions button:nth-child(2) {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.seat-picker-actions button:nth-child(2):hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+/* Change / Confirm seat */
+.seat-picker-actions .primary-button {
+  background: #4f46e5;
+  border: 1px solid #4f46e5;
+  color: white;
+  font-weight: 700;
+  padding: 11px 24px;
+}
+
+.seat-picker-actions .primary-button:hover:not(:disabled) {
+  background: #4338ca;
+  border-color: #4338ca;
+  transform: translateY(-1px);
+}
+
+.seat-picker-actions .primary-button:disabled {
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  color: #a5b4fc;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .seat-picker-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .seat-picker-actions button {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+}
+/* Fix footer button alignment */
+
+.seat-picker-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.seat-picker-actions button,
+.seat-picker-actions button:first-child,
+.seat-picker-actions button:nth-child(2),
+.seat-picker-actions .primary-button {
+  box-sizing: border-box;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 20px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  line-height: 1 !important;
+  vertical-align: middle;
+}
+
+.seat-picker-actions button:first-child {
+  margin-right: auto !important;
+}
+
+@media (max-width: 600px) {
+  .seat-picker-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .seat-picker-actions button {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+}

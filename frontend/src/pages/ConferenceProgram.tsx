@@ -11,11 +11,17 @@ import {
   Users,
 } from "lucide-react";
 
+import { useAuth } from "../context/AuthContext";
 import {
   getConferenceProgram,
   type ConferenceProgram as ProgramData,
   type ScheduledTalk,
 } from "../services/schedule";
+import {
+  getConferenceReservations,
+  reserveTalk,
+  cancelReservation,
+} from "../services/reservations";
 
 function formatDay(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -45,43 +51,54 @@ function dayKey(value: string) {
 
 export default function ConferenceProgram() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const isAttendee = user?.role === "ATTENDEE";
 
   const [program, setProgram] = useState<ProgramData | null>(null);
+  const [reservedTalkIds, setReservedTalkIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyTalkId, setBusyTalkId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     let active = true;
 
     async function load() {
+      setLoading(true);
+      setError("");
+      setSuccess("");
+      setProgram(null);
+      setReservedTalkIds([]);
+
       if (!id) {
         setError("Conference ID is missing.");
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-      setError("");
-      setProgram(null);
-
       try {
-        const data = await getConferenceProgram(id);
+        const [programData, reservationData] = await Promise.all([
+          getConferenceProgram(id),
+          isAttendee
+            ? getConferenceReservations(id)
+            : Promise.resolve({ talkIds: [] }),
+        ]);
 
-        if (active) {
-          setProgram(data);
-        }
+        if (!active) return;
+
+        setProgram(programData);
+        setReservedTalkIds(reservationData.talkIds);
       } catch (err) {
-        if (active) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Unable to load conference program."
-          );
-        }
+        if (!active) return;
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load conference program."
+        );
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     }
 
@@ -90,7 +107,45 @@ export default function ConferenceProgram() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, isAttendee]);
+
+  async function handleReservation(talk: ScheduledTalk) {
+    const alreadyReserved = reservedTalkIds.includes(talk.id);
+
+    setBusyTalkId(talk.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      if (alreadyReserved) {
+        await cancelReservation(talk.id);
+
+        setReservedTalkIds((current) =>
+          current.filter((talkId) => talkId !== talk.id)
+        );
+
+        setSuccess("Reservation cancelled successfully.");
+      } else {
+        await reserveTalk(talk.id);
+
+        setReservedTalkIds((current) =>
+          current.includes(talk.id)
+            ? current
+            : [...current, talk.id]
+        );
+
+        setSuccess("Seat reserved successfully.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to update reservation."
+      );
+    } finally {
+      setBusyTalkId(null);
+    }
+  }
 
   const groupedTalks = useMemo(() => {
     if (!program) return [];
@@ -124,8 +179,12 @@ export default function ConferenceProgram() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">CONFERENCE PROGRAM</span>
-          <h1>{program?.conference.title ?? "Conference Program"}</h1>
-          <p>Explore scheduled sessions, speakers, and rooms.</p>
+          <h1>
+            {program?.conference.title ?? "Conference Program"}
+          </h1>
+          <p>
+            Explore scheduled sessions, speakers, and rooms.
+          </p>
         </div>
 
         <Link
@@ -145,6 +204,12 @@ export default function ConferenceProgram() {
         </p>
       )}
 
+      {success && (
+        <p className="schedule-success" role="status">
+          {success}
+        </p>
+      )}
+
       {!loading && program && (
         <>
           <div className="schedule-conference-info">
@@ -152,81 +217,148 @@ export default function ConferenceProgram() {
               <CalendarDays size={17} />
               {formatDay(program.conference.startsAt)}
             </span>
+
             <span>
               <MapPin size={17} />
               {program.conference.location}
             </span>
+
             <span>
               <Mic2 size={17} />
               {program.talks.length} sessions
             </span>
           </div>
 
+          {isAttendee && (
+            <div className="program-attendee-toolbar">
+              <p>
+                Reserve sessions to build your personal schedule.
+              </p>
+
+              <Link
+                to="/my-schedule"
+                className="schedule-secondary-button"
+              >
+                <CalendarDays size={16} />
+                My Schedule
+              </Link>
+            </div>
+          )}
+
           {groupedTalks.length === 0 ? (
             <div className="schedule-empty">
               <CalendarDays size={32} />
               <h3>Program coming soon</h3>
               <p>
-                The organizer has not published any scheduled
-                sessions yet.
+                The organizer has not scheduled any sessions yet.
               </p>
             </div>
           ) : (
             <div className="program-days">
               {groupedTalks.map((group) => (
-                <section className="schedule-panel" key={group.day}>
+                <section
+                  className="schedule-panel"
+                  key={group.day}
+                >
                   <div className="schedule-section-heading">
                     <div>
                       <h2>
                         <CalendarDays size={21} />
-                        {formatDay(group.talks[0].startsAt!)}
+                        {formatDay(
+                          group.talks[0].startsAt!
+                        )}
                       </h2>
-                      <p>{group.talks.length} scheduled sessions</p>
+                      <p>
+                        {group.talks.length} scheduled sessions
+                      </p>
                     </div>
                   </div>
 
                   <div className="program-session-list">
-                    {group.talks.map((talk) => (
-                      <article
-                        className="program-session"
-                        key={talk.id}
-                      >
-                        <div className="program-session-time">
-                          <Clock3 size={18} />
-                          <strong>
-                            {formatTime(talk.startsAt!)}
-                          </strong>
-                          <span>
-                            {formatTime(talk.endsAt!)}
-                          </span>
-                        </div>
+                    {group.talks.map((talk) => {
+                      const reserved =
+                        reservedTalkIds.includes(talk.id);
 
-                        <div className="program-session-content">
-                          <h3>{talk.title}</h3>
-                          <p>{talk.description}</p>
+                      const started =
+                        talk.startsAt !== null &&
+                        new Date(talk.startsAt) <= new Date();
 
-                          <div className="schedule-talk-meta">
+                      return (
+                        <article
+                          className="program-session"
+                          key={talk.id}
+                        >
+                          <div className="program-session-time">
+                            <Clock3 size={18} />
+                            <strong>
+                              {formatTime(talk.startsAt!)}
+                            </strong>
                             <span>
-                              <Mic2 size={15} />
-                              {talk.speaker.firstName}{" "}
-                              {talk.speaker.lastName}
+                              {formatTime(talk.endsAt!)}
                             </span>
+                          </div>
 
-                            <span>
-                              <DoorOpen size={15} />
-                              {talk.room?.name ?? "Room TBA"}
-                            </span>
+                          <div className="program-session-content">
+                            <h3>{talk.title}</h3>
+                            <p>{talk.description}</p>
 
-                            {talk.room && (
+                            <div className="schedule-talk-meta">
                               <span>
-                                <Users size={15} />
-                                {talk.room.capacity} seats
+                                <Mic2 size={15} />
+                                {talk.speaker.firstName}{" "}
+                                {talk.speaker.lastName}
                               </span>
+
+                              <span>
+                                <DoorOpen size={15} />
+                                {talk.room?.name ?? "Room TBA"}
+                              </span>
+
+                              {talk.room && (
+                                <span>
+                                  <Users size={15} />
+                                  {talk.room.capacity} seats
+                                </span>
+                              )}
+                            </div>
+
+                            {isAttendee && (
+                              <div className="program-reservation-actions">
+                                <button
+                                  type="button"
+                                  className={
+                                    reserved
+                                      ? "schedule-danger-button"
+                                      : "schedule-primary-button"
+                                  }
+                                  disabled={
+                                    busyTalkId !== null ||
+                                    (!reserved && started)
+                                  }
+                                  onClick={() =>
+                                    void handleReservation(talk)
+                                  }
+                                >
+                                  {busyTalkId === talk.id
+                                    ? "Processing..."
+                                    : reserved
+                                      ? "Cancel Reservation"
+                                      : started
+                                        ? "Reservation Closed"
+                                        : "Reserve Seat"}
+                                </button>
+
+                                {reserved && (
+                                  <span className="my-schedule-status">
+                                    Reserved
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
-                        </div>
-                      </article>
-                    ))}
+                        </article>
+                      );
+                    })}
                   </div>
                 </section>
               ))}

@@ -1,5 +1,9 @@
 
 import { Router } from "express";
+import multer from "multer";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
@@ -109,25 +113,37 @@ async function getOrganizer(userId: string | undefined) {
 
 /* Public conference listing */
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
+  const search = typeof req.query.search === "string" ? req.query.search.trim().slice(0, 150) : "";
+  const location = typeof req.query.location === "string" ? req.query.location.trim().slice(0, 200) : "";
+  const from = typeof req.query.from === "string" ? req.query.from : "";
+  const to = typeof req.query.to === "string" ? req.query.to : "";
+  const fromDate = from ? new Date(from) : null;
+  const toDate = to ? new Date(to) : null;
+
+  if ((fromDate && Number.isNaN(fromDate.getTime())) || (toDate && Number.isNaN(toDate.getTime()))) {
+    res.status(400).json({ message: "Invalid date filter" });
+    return;
+  }
+
   try {
     const conferences = await prisma.conference.findMany({
       where: {
         status: "PUBLISHED",
+        ...(search ? { title: { contains: search, mode: "insensitive" as const } } : {}),
+        ...(location ? { location: { contains: location, mode: "insensitive" as const } } : {}),
+        ...(fromDate || toDate ? { startsAt: {
+          ...(fromDate ? { gte: fromDate } : {}),
+          ...(toDate ? { lte: toDate } : {}),
+        } } : {}),
       },
-      orderBy: {
-        startsAt: "asc",
-      },
+      orderBy: { startsAt: "asc" },
       include: conferenceInclude,
     });
 
     res.json(conferences);
   } catch (error) {
-    handleDatabaseError(
-      error,
-      res,
-      "Failed to load conferences"
-    );
+    handleDatabaseError(error, res, "Failed to load conferences");
   }
 });
 
@@ -405,6 +421,206 @@ router.delete(
     }
   }
 );
+
+/* Conference cover image, duplication and archiving */
+
+const conferenceImageDirectory = path.resolve(process.cwd(), "uploads", "conferences");
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      callback(new Error("Only JPG, PNG and WebP images are allowed"));
+      return;
+    }
+    callback(null, true);
+  },
+});
+
+function imageExtension(buffer: Buffer): "jpg" | "png" | "webp" | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "jpg";
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "png";
+  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") return "webp";
+  return null;
+}
+
+async function removeConferenceImage(imageUrl: string | null) {
+  const prefix = "/uploads/conferences/";
+  if (!imageUrl?.startsWith(prefix)) return;
+  const filename = imageUrl.slice(prefix.length);
+  if (!/^[0-9a-f-]+\.(jpg|png|webp)$/i.test(filename)) return;
+  try {
+    await fs.unlink(path.join(conferenceImageDirectory, filename));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.error("Unable to remove conference image:", error);
+    }
+  }
+}
+
+router.post("/:id/image", requireAuth, (req: AuthRequest, res, next) => {
+  imageUpload.single("image")(req, res, (error: unknown) => {
+    if (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Invalid image upload" });
+      return;
+    }
+    next();
+  });
+}, async (req: AuthRequest, res) => {
+  const id = req.params.id as string;
+  if (!isValidId(id)) {
+    res.status(400).json({ message: "Invalid conference ID" });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ message: "Please select an image" });
+    return;
+  }
+
+  try {
+    const organizer = await getOrganizer(req.userId);
+    if (!organizer) {
+      res.status(403).json({ message: "Organizer access required" });
+      return;
+    }
+    const existing = await prisma.conference.findFirst({
+      where: { id, organizerId: organizer.id, status: { in: ["DRAFT", "PUBLISHED"] } },
+      select: { imageUrl: true },
+    });
+    if (!existing) {
+      res.status(404).json({ message: "Editable conference not found" });
+      return;
+    }
+
+    const extension = imageExtension(req.file.buffer);
+    if (!extension) {
+      res.status(400).json({ message: "Invalid image file" });
+      return;
+    }
+
+    await fs.mkdir(conferenceImageDirectory, { recursive: true });
+    const filename = `${randomUUID()}.${extension}`;
+    const filePath = path.join(conferenceImageDirectory, filename);
+    await fs.writeFile(filePath, req.file.buffer, { flag: "wx" });
+    const imageUrl = `/uploads/conferences/${filename}`;
+
+    try {
+      const updated = await prisma.conference.updateMany({
+        where: { id, organizerId: organizer.id, status: { in: ["DRAFT", "PUBLISHED"] } },
+        data: { imageUrl },
+      });
+      if (updated.count === 0) {
+        await fs.unlink(filePath).catch(() => undefined);
+        res.status(409).json({ message: "Conference is no longer editable" });
+        return;
+      }
+      const conference = await prisma.conference.findUnique({ where: { id }, include: conferenceInclude });
+      if (existing.imageUrl) await removeConferenceImage(existing.imageUrl);
+      res.json({ message: "Conference image updated", conference });
+    } catch (error) {
+      await fs.unlink(filePath).catch(() => undefined);
+      throw error;
+    }
+  } catch (error) {
+    handleDatabaseError(error, res, "Failed to upload conference image");
+  }
+});
+
+router.delete("/:id/image", requireAuth, async (req: AuthRequest, res) => {
+  const id = req.params.id as string;
+  if (!isValidId(id)) {
+    res.status(400).json({ message: "Invalid conference ID" });
+    return;
+  }
+  try {
+    const organizer = await getOrganizer(req.userId);
+    if (!organizer) {
+      res.status(403).json({ message: "Organizer access required" });
+      return;
+    }
+    const existing = await prisma.conference.findFirst({
+      where: { id, organizerId: organizer.id, status: { in: ["DRAFT", "PUBLISHED"] } },
+      select: { imageUrl: true },
+    });
+    if (!existing) {
+      res.status(404).json({ message: "Editable conference not found" });
+      return;
+    }
+    await prisma.conference.updateMany({
+      where: { id, organizerId: organizer.id, status: { in: ["DRAFT", "PUBLISHED"] } },
+      data: { imageUrl: null },
+    });
+    await removeConferenceImage(existing.imageUrl);
+    const conference = await prisma.conference.findUnique({ where: { id }, include: conferenceInclude });
+    res.json({ message: "Conference image removed", conference });
+  } catch (error) {
+    handleDatabaseError(error, res, "Failed to remove conference image");
+  }
+});
+
+router.post("/:id/duplicate", requireAuth, async (req: AuthRequest, res) => {
+  const id = req.params.id as string;
+  if (!isValidId(id)) {
+    res.status(400).json({ message: "Invalid conference ID" });
+    return;
+  }
+  try {
+    const organizer = await getOrganizer(req.userId);
+    if (!organizer) {
+      res.status(403).json({ message: "Organizer access required" });
+      return;
+    }
+    const source = await prisma.conference.findFirst({ where: { id, organizerId: organizer.id } });
+    if (!source) {
+      res.status(404).json({ message: "Conference not found" });
+      return;
+    }
+    const copy = await prisma.conference.create({
+      data: {
+        title: `${source.title} (Copy)`.slice(0, 150),
+        description: source.description,
+        location: source.location,
+        capacity: source.capacity,
+        startsAt: source.startsAt,
+        endsAt: source.endsAt,
+        organizerId: organizer.id,
+        status: "DRAFT",
+        imageUrl: null, // The duplicate starts without a shared image file.
+      },
+      include: conferenceInclude,
+    });
+    res.status(201).json(copy);
+  } catch (error) {
+    handleDatabaseError(error, res, "Failed to duplicate conference");
+  }
+});
+
+router.patch("/:id/archive", requireAuth, async (req: AuthRequest, res) => {
+  const id = req.params.id as string;
+  if (!isValidId(id)) {
+    res.status(400).json({ message: "Invalid conference ID" });
+    return;
+  }
+  try {
+    const organizer = await getOrganizer(req.userId);
+    if (!organizer) {
+      res.status(403).json({ message: "Organizer access required" });
+      return;
+    }
+    const result = await prisma.conference.updateMany({
+      where: { id, organizerId: organizer.id, status: { in: ["DRAFT", "PUBLISHED"] } },
+      data: { status: "ARCHIVED" },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ message: "Active conference not found" });
+      return;
+    }
+    const conference = await prisma.conference.findUnique({ where: { id }, include: conferenceInclude });
+    res.json(conference);
+  } catch (error) {
+    handleDatabaseError(error, res, "Failed to archive conference");
+  }
+});
 
 /* Published conference details */
 

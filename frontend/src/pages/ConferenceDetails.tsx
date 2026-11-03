@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -15,12 +14,20 @@ import {
 } from "lucide-react";
 import {
   getConferenceDetails,
+  conferenceImageUrl,
   getConferenceRegistration,
   registerForConference,
   cancelConferenceRegistration,
   type ConferenceDetails as ConferenceDetailsType,
 } from "../services/conferences";
+import "./ConferenceDetails.css";
 import { useAuth } from "../context/AuthContext";
+import {
+  getConferenceReservations,
+  reserveTalk,
+  cancelReservation,
+} from "../services/reservations";
+import SeatPicker from "../components/SeatPicker";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -44,14 +51,20 @@ export default function ConferenceDetails() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
 
-  const [conference, setConference] =
-    useState<ConferenceDetailsType | null>(null);
+  const [conference, setConference] = useState<ConferenceDetailsType | null>(
+    null
+  );
 
   const [registered, setRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [reservedTalkIds, setReservedTalkIds] = useState<string[]>([]);
+  const [busyTalkId, setBusyTalkId] = useState<string | null>(null);
+  const [reservationMessage, setReservationMessage] = useState("");
+  const [reservationError, setReservationError] = useState("");
+  const [selectedTalkId, setSelectedTalkId] = useState<string | null>(null);
 
   const loadConference = useCallback(async () => {
     if (!id) {
@@ -88,9 +101,7 @@ export default function ConferenceDetails() {
         if (!active) return;
 
         setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load conference."
+          err instanceof Error ? err.message : "Unable to load conference."
         );
       })
       .finally(() => {
@@ -102,34 +113,51 @@ export default function ConferenceDetails() {
     };
   }, [loadConference]);
 
+  useEffect(() => {
+    if (!id || user?.role !== "ATTENDEE") {
+      setReservedTalkIds([]);
+      return;
+    }
+
+    let active = true;
+    setReservationError("");
+
+    getConferenceReservations(id)
+      .then((data) => {
+        if (active) setReservedTalkIds(data.talkIds);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setReservationError(
+            err instanceof Error ? err.message : "Unable to load reservations."
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, user?.id, user?.role]);
+
   async function refreshConference() {
     if (!id) return;
 
     setError("");
 
     try {
-      const { details, registration } =
-        await loadConference();
+      const { details, registration } = await loadConference();
 
       setConference(details);
       setRegistered(registration.registered);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to refresh conference."
+        err instanceof Error ? err.message : "Unable to refresh conference."
       );
     }
   }
 
   async function handleRegister() {
-    if (
-      !id ||
-      !user ||
-      user.role !== "ATTENDEE" ||
-      registered ||
-      processing
-    ) {
+    if (!id || !user || user.role !== "ATTENDEE" || registered || processing) {
       return;
     }
 
@@ -150,11 +178,7 @@ export default function ConferenceDetails() {
         // Registration succeeded even if refreshing details fails.
       }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Registration failed."
-      );
+      setError(err instanceof Error ? err.message : "Registration failed.");
 
       await refreshConference();
     } finally {
@@ -189,12 +213,41 @@ export default function ConferenceDetails() {
       }
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to cancel registration."
+        err instanceof Error ? err.message : "Unable to cancel registration."
       );
     } finally {
       setProcessing(false);
+    }
+  }
+
+  async function handleTalkReservation(talkId: string) {
+    if (!registered || processing || busyTalkId) return;
+
+    const isReserved = reservedTalkIds.includes(talkId);
+    setBusyTalkId(talkId);
+    setReservationError("");
+    setReservationMessage("");
+
+    try {
+      if (isReserved) {
+        await cancelReservation(talkId);
+        setReservedTalkIds((current) =>
+          current.filter((item) => item !== talkId)
+        );
+        setReservationMessage("Reservation cancelled successfully.");
+      } else {
+        await reserveTalk(talkId);
+        setReservedTalkIds((current) =>
+          current.includes(talkId) ? current : [...current, talkId]
+        );
+        setReservationMessage("Seat reserved successfully! Check My Schedule.");
+      }
+    } catch (err) {
+      setReservationError(
+        err instanceof Error ? err.message : "Unable to update reservation."
+      );
+    } finally {
+      setBusyTalkId(null);
     }
   }
 
@@ -217,9 +270,7 @@ export default function ConferenceDetails() {
         <div className="empty-state">
           <AlertCircle size={32} />
           <h3>Conference unavailable</h3>
-          <p className="page-error">
-            {error || "Conference not found."}
-          </p>
+          <p className="page-error">{error || "Conference not found."}</p>
 
           <button
             className="secondary-button"
@@ -236,31 +287,20 @@ export default function ConferenceDetails() {
   const registeredCount = conference._count.registrations;
   const capacity = conference.capacity;
 
-  const availableSeats = Math.max(
-    0,
-    capacity - registeredCount
-  );
+  const availableSeats = Math.max(0, capacity - registeredCount);
 
   const fullyBooked = availableSeats === 0;
 
   const occupancyPercentage =
     capacity > 0
-      ? Math.min(
-          100,
-          Math.round((registeredCount / capacity) * 100)
-        )
+      ? Math.min(100, Math.round((registeredCount / capacity) * 100))
       : 0;
 
-  const isPast =
-    new Date(conference.endsAt).getTime() < Date.now();
+  const isPast = new Date(conference.endsAt).getTime() < Date.now();
 
   const isAttendee = user?.role === "ATTENDEE";
   const canRegister =
-    Boolean(user) &&
-    isAttendee &&
-    !registered &&
-    !fullyBooked &&
-    !isPast;
+    Boolean(user) && isAttendee && !registered && !fullyBooked && !isPast;
 
   return (
     <div className="workspace-page">
@@ -268,6 +308,15 @@ export default function ConferenceDetails() {
         <ArrowLeft size={17} />
         Back to conferences
       </Link>
+
+      {conferenceImageUrl(conference.imageUrl) && (
+        <div className="event-details-cover">
+          <img
+            src={conferenceImageUrl(conference.imageUrl)!}
+            alt={`Cover for ${conference.title}`}
+          />
+        </div>
+      )}
 
       <div className="details-hero">
         <span
@@ -320,9 +369,7 @@ export default function ConferenceDetails() {
                 <CalendarDays size={19} />
                 <div>
                   <strong>Starts</strong>
-                  <span>
-                    {formatDateTime(conference.startsAt)}
-                  </span>
+                  <span>{formatDateTime(conference.startsAt)}</span>
                 </div>
               </div>
 
@@ -330,9 +377,7 @@ export default function ConferenceDetails() {
                 <Clock3 size={19} />
                 <div>
                   <strong>Ends</strong>
-                  <span>
-                    {formatDateTime(conference.endsAt)}
-                  </span>
+                  <span>{formatDateTime(conference.endsAt)}</span>
                 </div>
               </div>
 
@@ -357,30 +402,51 @@ export default function ConferenceDetails() {
           <section className="details-section">
             <h2>Conference sessions</h2>
 
+            <div className="program-reservation-actions">
+              <Link
+                to={`/conferences/${id}/program`}
+                className="schedule-secondary-button"
+              >
+                View Full Program
+              </Link>
+              {isAttendee && (
+                <Link to="/my-schedule" className="schedule-secondary-button">
+                  My Schedule
+                </Link>
+              )}
+            </div>
+
+            {reservationMessage && (
+              <p className="success-message" role="status">
+                {reservationMessage}
+              </p>
+            )}
+            {reservationError && (
+              <p className="page-error" role="alert">
+                {reservationError}
+              </p>
+            )}
+
             {conference.talks.length === 0 ? (
               <div className="sessions-empty">
                 <CalendarDays size={27} />
                 <h3>Schedule coming soon</h3>
                 <p>
-                  Sessions and speakers will appear here
-                  once the organizer prepares the program.
+                  Sessions and speakers will appear here once the organizer
+                  prepares the program.
                 </p>
               </div>
             ) : (
               <div className="sessions-list">
                 {conference.talks.map((talk) => (
-                  <article
-                    className="session-item"
-                    key={talk.id}
-                  >
+                  <article className="session-item" key={talk.id}>
                     <h3>{talk.title}</h3>
                     <p>{talk.description}</p>
 
                     <div className="session-meta">
                       <span>
                         <UserRound size={15} />
-                        {talk.speaker.firstName}{" "}
-                        {talk.speaker.lastName}
+                        {talk.speaker.firstName} {talk.speaker.lastName}
                       </span>
 
                       {talk.startsAt && (
@@ -405,6 +471,34 @@ export default function ConferenceDetails() {
                         {formatDateTime(talk.endsAt)}
                       </p>
                     )}
+
+                    {isAttendee &&
+                      registered &&
+                      talk.startsAt &&
+                      talk.endsAt &&
+                      talk.room && (
+                        <div className="program-reservation-actions">
+                          <button
+                            type="button"
+                            className="schedule-primary-button"
+                            disabled={
+                              busyTalkId !== null ||
+                              processing ||
+                              new Date(talk.startsAt).getTime() <= Date.now()
+                            }
+                            onClick={() => setSelectedTalkId(talk.id)}
+                          >
+                            {new Date(talk.startsAt).getTime() <= Date.now()
+                              ? "Reservation Closed"
+                              : reservedTalkIds.includes(talk.id)
+                              ? "Manage Seat"
+                              : "Choose Seat"}
+                          </button>
+                          {reservedTalkIds.includes(talk.id) && (
+                            <span className="my-schedule-status">Reserved</span>
+                          )}
+                        </div>
+                      )}
                   </article>
                 ))}
               </div>
@@ -429,9 +523,7 @@ export default function ConferenceDetails() {
               </button>
             </div>
 
-            <p>
-              Secure your place at this conference.
-            </p>
+            <p>Secure your place at this conference.</p>
 
             <div className="registration-capacity">
               <div className="registration-capacity-numbers">
@@ -479,8 +571,7 @@ export default function ConferenceDetails() {
 
               <span>
                 <UserRound size={18} />
-                Organized by{" "}
-                {conference.organizer?.firstName}{" "}
+                Organized by {conference.organizer?.firstName}{" "}
                 {conference.organizer?.lastName}
               </span>
             </div>
@@ -496,40 +587,26 @@ export default function ConferenceDetails() {
                   className="registration-cancel-button"
                   type="button"
                   disabled={processing}
-                  onClick={() =>
-                    void handleCancelRegistration()
-                  }
+                  onClick={() => void handleCancelRegistration()}
                 >
                   <XCircle size={17} />
-                  {processing
-                    ? "Cancelling..."
-                    : "Cancel registration"}
+                  {processing ? "Cancelling..." : "Cancel registration"}
                 </button>
               </>
             ) : !user ? (
-              <Link
-                className="action-button registration-button"
-                to="/login"
-              >
+              <Link className="action-button registration-button" to="/login">
                 Log in to register
               </Link>
             ) : !isAttendee ? (
               <p className="registration-notice">
-                Registration is available for attendee
-                accounts only.
+                Registration is available for attendee accounts only.
               </p>
             ) : isPast ? (
-              <button
-                className="action-button registration-button"
-                disabled
-              >
+              <button className="action-button registration-button" disabled>
                 Event has ended
               </button>
             ) : fullyBooked ? (
-              <button
-                className="action-button registration-button"
-                disabled
-              >
+              <button className="action-button registration-button" disabled>
                 Fully booked
               </button>
             ) : (
@@ -539,9 +616,7 @@ export default function ConferenceDetails() {
                 disabled={!canRegister || processing}
                 onClick={() => void handleRegister()}
               >
-                {processing
-                  ? "Registering..."
-                  : "Register for conference"}
+                {processing ? "Registering..." : "Register for conference"}
               </button>
             )}
 
@@ -557,8 +632,22 @@ export default function ConferenceDetails() {
               </p>
             )}
           </div>
-        </aside>
+          </aside>
       </div>
+
+      {/* Seat selection modal */}
+      {selectedTalkId && (
+        <SeatPicker
+          talkId={selectedTalkId}
+          onClose={() => setSelectedTalkId(null)}
+          onUpdated={async () => {
+            if (!id) return;
+
+            const data = await getConferenceReservations(id);
+            setReservedTalkIds(data.talkIds);
+          }}
+        />
+      )}
     </div>
   );
 }
