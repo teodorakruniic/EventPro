@@ -1,24 +1,49 @@
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import type { ReactNode } from "react";
+
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AppLayout from "./components/AppLayout";
+
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Conferences from "./pages/Conferences";
 import MyConferences from "./pages/MyConferences";
 import CreateConference from "./pages/CreateConference";
-import "./App.css";
 import ConferenceDetails from "./pages/ConferenceDetails";
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+import SubmitTalk from "./pages/SubmitTalk";
+import MyTalks from "./pages/MyTalks";
+import ReviewTalks from "./pages/ReviewTalks";
+
+import "./App.css";
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
+
+  return user
+    ? children
+    : <Navigate to="/login" replace />;
 }
 
-function OrganizerRoute({ children }: { children: React.ReactNode }) {
+function OrganizerRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+
   return user?.role === "ORGANIZER"
+    ? children
+    : <Navigate to="/dashboard" replace />;
+}
+
+function SpeakerRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  return user?.role === "SPEAKER"
     ? children
     : <Navigate to="/dashboard" replace />;
 }
@@ -30,19 +55,31 @@ function AppRoutes() {
     <Routes>
       <Route
         path="/"
-        element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
+        element={
+          <Navigate
+            to={user ? "/dashboard" : "/login"}
+            replace
+          />
+        }
       />
 
       <Route
         path="/login"
-        element={user ? <Navigate to="/dashboard" replace /> : <Login />}
+        element={
+          user
+            ? <Navigate to="/dashboard" replace />
+            : <Login />
+        }
       />
 
       <Route
         path="/register"
-        element={user ? <Navigate to="/dashboard" replace /> : <Register />}
+        element={
+          user
+            ? <Navigate to="/dashboard" replace />
+            : <Register />
+        }
       />
-
 
       <Route
         element={
@@ -51,8 +88,20 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/conferences" element={<Conferences />} />
+        <Route
+          path="/dashboard"
+          element={<Dashboard />}
+        />
+
+        <Route
+          path="/conferences"
+          element={<Conferences />}
+        />
+
+        <Route
+          path="/conferences/:id"
+          element={<ConferenceDetails />}
+        />
 
         <Route
           path="/my-conferences"
@@ -80,13 +129,39 @@ function AppRoutes() {
             </OrganizerRoute>
           }
         />
-      </Route>
-      <Route
-  path="/conferences/:id"
-  element={<ConferenceDetails />}
-/>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="/my-talks"
+          element={
+            <SpeakerRoute>
+              <MyTalks />
+            </SpeakerRoute>
+          }
+        />
+
+        <Route
+          path="/talks/new"
+          element={
+            <SpeakerRoute>
+              <SubmitTalk />
+            </SpeakerRoute>
+          }
+        />
+
+        <Route
+          path="/talks/review"
+          element={
+            <OrganizerRoute>
+              <ReviewTalks />
+            </OrganizerRoute>
+          }
+        />
+      </Route>
+
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
     </Routes>
   );
 }
