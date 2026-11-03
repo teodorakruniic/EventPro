@@ -10,6 +10,7 @@ import {
   Mic2,
   ClipboardList,
   Send,
+  CalendarClock,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -38,67 +39,48 @@ export default function AppLayout() {
           className="sidebar-nav"
           aria-label="Main navigation"
         >
-          {/* Navigation available to all users */}
-          <NavLink
-            to="/dashboard"
-            className={navClass}
-          >
+          <NavLink to="/dashboard" className={navClass}>
             <LayoutDashboard size={19} />
             <span>Dashboard</span>
           </NavLink>
 
-          <NavLink
-            to="/conferences"
-            className={navClass}
-          >
+          <NavLink to="/conferences" className={navClass}>
             <CalendarRange size={19} />
             <span>Explore Conferences</span>
           </NavLink>
 
-          {/* Organizer navigation */}
           {user?.role === "ORGANIZER" && (
             <>
-              <NavLink
-                to="/my-conferences"
-                className={navClass}
-              >
+              <NavLink to="/my-conferences" className={navClass}>
                 <FolderKanban size={19} />
                 <span>My Conferences</span>
               </NavLink>
 
-              <NavLink
-                to="/conferences/new"
-                className={navClass}
-              >
+              <NavLink to="/conferences/new" className={navClass}>
                 <Plus size={19} />
                 <span>Create Conference</span>
               </NavLink>
 
-              <NavLink
-                to="/talks/review"
-                className={navClass}
-              >
+              <NavLink to="/talks/review" className={navClass}>
                 <ClipboardList size={19} />
                 <span>Review Talks</span>
+              </NavLink>
+
+              <NavLink to="/schedule" className={navClass}>
+                <CalendarClock size={19} />
+                <span>Conference Schedule</span>
               </NavLink>
             </>
           )}
 
-          {/* Speaker navigation */}
           {user?.role === "SPEAKER" && (
             <>
-              <NavLink
-                to="/my-talks"
-                className={navClass}
-              >
+              <NavLink to="/my-talks" className={navClass}>
                 <Mic2 size={19} />
                 <span>My Talks</span>
               </NavLink>
 
-              <NavLink
-                to="/talks/new"
-                className={navClass}
-              >
+              <NavLink to="/talks/new" className={navClass}>
                 <Send size={19} />
                 <span>Submit Talk</span>
               </NavLink>
