@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -9,14 +9,36 @@ import {
   Users,
   Clock3,
   CheckCircle2,
+  AlertCircle,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
 import {
   getConferenceDetails,
   getConferenceRegistration,
   registerForConference,
+  cancelConferenceRegistration,
   type ConferenceDetails as ConferenceDetailsType,
 } from "../services/conferences";
 import { useAuth } from "../context/AuthContext";
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function ConferenceDetails() {
   const { id } = useParams<{ id: string }>();
@@ -24,58 +46,94 @@ export default function ConferenceDetails() {
 
   const [conference, setConference] =
     useState<ConferenceDetailsType | null>(null);
+
   const [registered, setRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [registering, setRegistering] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
+  const loadConference = useCallback(async () => {
     if (!id) {
-      setError("Invalid conference ID.");
-      setLoading(false);
-      return;
+      throw new Error("Invalid conference ID.");
     }
 
+    const [details, registration] = await Promise.all([
+      getConferenceDetails(id),
+      user
+        ? getConferenceRegistration(id)
+        : Promise.resolve({ registered: false }),
+    ]);
+
+    return { details, registration };
+  }, [id, user?.id]);
+
+  useEffect(() => {
     let active = true;
 
-    async function load() {
-      try {
-        const [details, registration] = await Promise.all([
-          getConferenceDetails(id!),
-          user
-            ? getConferenceRegistration(id!)
-            : Promise.resolve({ registered: false }),
-        ]);
+    setLoading(true);
+    setError("");
+    setMessage("");
+    setConference(null);
+    setRegistered(false);
 
-        if (active) {
-          setConference(details);
-          setRegistered(registration.registered);
-        }
-      } catch (err) {
-        if (active) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Unable to load conference."
-          );
-        }
-      } finally {
+    loadConference()
+      .then(({ details, registration }) => {
+        if (!active) return;
+
+        setConference(details);
+        setRegistered(registration.registered);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load conference."
+        );
+      })
+      .finally(() => {
         if (active) setLoading(false);
-      }
-    }
-
-    void load();
+      });
 
     return () => {
       active = false;
     };
-  }, [id, user?.id]);
+  }, [loadConference]);
+
+  async function refreshConference() {
+    if (!id) return;
+
+    setError("");
+
+    try {
+      const { details, registration } =
+        await loadConference();
+
+      setConference(details);
+      setRegistered(registration.registered);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to refresh conference."
+      );
+    }
+  }
 
   async function handleRegister() {
-    if (!id || registered || registering) return;
+    if (
+      !id ||
+      !user ||
+      user.role !== "ATTENDEE" ||
+      registered ||
+      processing
+    ) {
+      return;
+    }
 
-    setRegistering(true);
+    setProcessing(true);
     setError("");
     setMessage("");
 
@@ -85,21 +143,67 @@ export default function ConferenceDetails() {
       setRegistered(true);
       setMessage("You have successfully registered!");
 
-      const updated = await getConferenceDetails(id);
-      setConference(updated);
+      try {
+        const updated = await getConferenceDetails(id);
+        setConference(updated);
+      } catch {
+        // Registration succeeded even if refreshing details fails.
+      }
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : "Registration failed."
       );
+
+      await refreshConference();
     } finally {
-      setRegistering(false);
+      setProcessing(false);
+    }
+  }
+
+  async function handleCancelRegistration() {
+    if (!id || !registered || processing) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel your conference registration?"
+    );
+
+    if (!confirmed) return;
+
+    setProcessing(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await cancelConferenceRegistration(id);
+
+      setRegistered(false);
+      setMessage("Your registration has been cancelled.");
+
+      try {
+        const updated = await getConferenceDetails(id);
+        setConference(updated);
+      } catch {
+        // Cancellation succeeded even if refreshing details fails.
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to cancel registration."
+      );
+    } finally {
+      setProcessing(false);
     }
   }
 
   if (loading) {
-    return <p>Loading conference details...</p>;
+    return (
+      <div className="workspace-page">
+        <p>Loading conference details...</p>
+      </div>
+    );
   }
 
   if (!conference) {
@@ -109,12 +213,54 @@ export default function ConferenceDetails() {
           <ArrowLeft size={17} />
           Back to conferences
         </Link>
-        <p className="page-error">
-          {error || "Conference not found."}
-        </p>
+
+        <div className="empty-state">
+          <AlertCircle size={32} />
+          <h3>Conference unavailable</h3>
+          <p className="page-error">
+            {error || "Conference not found."}
+          </p>
+
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
+
+  const registeredCount = conference._count.registrations;
+  const capacity = conference.capacity;
+
+  const availableSeats = Math.max(
+    0,
+    capacity - registeredCount
+  );
+
+  const fullyBooked = availableSeats === 0;
+
+  const occupancyPercentage =
+    capacity > 0
+      ? Math.min(
+          100,
+          Math.round((registeredCount / capacity) * 100)
+        )
+      : 0;
+
+  const isPast =
+    new Date(conference.endsAt).getTime() < Date.now();
+
+  const isAttendee = user?.role === "ATTENDEE";
+  const canRegister =
+    Boolean(user) &&
+    isAttendee &&
+    !registered &&
+    !fullyBooked &&
+    !isPast;
 
   return (
     <div className="workspace-page">
@@ -124,8 +270,14 @@ export default function ConferenceDetails() {
       </Link>
 
       <div className="details-hero">
-        <span className="status-pill status-published">
-          Published event
+        <span
+          className={
+            isPast
+              ? "status-pill status-archived"
+              : "status-pill status-published"
+          }
+        >
+          {isPast ? "Past event" : "Published event"}
         </span>
 
         <h1>{conference.title}</h1>
@@ -138,7 +290,12 @@ export default function ConferenceDetails() {
         <div className="details-hero-meta">
           <span>
             <CalendarDays size={18} />
-            {new Date(conference.startsAt).toLocaleDateString("en-GB")}
+            {formatDate(conference.startsAt)}
+          </span>
+
+          <span>
+            <Clock3 size={18} />
+            {formatDateTime(conference.startsAt)}
           </span>
 
           <span>
@@ -152,10 +309,49 @@ export default function ConferenceDetails() {
         <div className="details-content">
           <section className="details-section">
             <h2>About this conference</h2>
+
             <p>
               {conference.description ||
                 "No additional description is available."}
             </p>
+
+            <div className="conference-detail-facts">
+              <div>
+                <CalendarDays size={19} />
+                <div>
+                  <strong>Starts</strong>
+                  <span>
+                    {formatDateTime(conference.startsAt)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <Clock3 size={19} />
+                <div>
+                  <strong>Ends</strong>
+                  <span>
+                    {formatDateTime(conference.endsAt)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <MapPin size={19} />
+                <div>
+                  <strong>Location</strong>
+                  <span>{conference.location}</span>
+                </div>
+              </div>
+
+              <div>
+                <Users size={19} />
+                <div>
+                  <strong>Capacity</strong>
+                  <span>{capacity} attendees</span>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="details-section">
@@ -166,8 +362,8 @@ export default function ConferenceDetails() {
                 <CalendarDays size={27} />
                 <h3>Schedule coming soon</h3>
                 <p>
-                  Sessions and speakers will appear here once
-                  the organizer publishes the program.
+                  Sessions and speakers will appear here
+                  once the organizer prepares the program.
                 </p>
               </div>
             ) : (
@@ -190,9 +386,7 @@ export default function ConferenceDetails() {
                       {talk.startsAt && (
                         <span>
                           <Clock3 size={15} />
-                          {new Date(
-                            talk.startsAt
-                          ).toLocaleString("en-GB")}
+                          {formatDateTime(talk.startsAt)}
                         </span>
                       )}
 
@@ -203,6 +397,14 @@ export default function ConferenceDetails() {
                         </span>
                       )}
                     </div>
+
+                    {talk.startsAt && talk.endsAt && (
+                      <p className="session-time-range">
+                        {formatDateTime(talk.startsAt)}
+                        {" – "}
+                        {formatDateTime(talk.endsAt)}
+                      </p>
+                    )}
                   </article>
                 ))}
               </div>
@@ -212,15 +414,67 @@ export default function ConferenceDetails() {
 
         <aside className="details-sidebar">
           <div className="registration-card">
-            <h3>Event registration</h3>
+            <div className="registration-card-heading">
+              <h3>Event registration</h3>
+
+              <button
+                className="registration-refresh"
+                type="button"
+                onClick={() => void refreshConference()}
+                disabled={processing}
+                title="Refresh availability"
+                aria-label="Refresh availability"
+              >
+                <RefreshCw size={17} />
+              </button>
+            </div>
+
             <p>
               Secure your place at this conference.
             </p>
 
+            <div className="registration-capacity">
+              <div className="registration-capacity-numbers">
+                <strong>
+                  {registeredCount} / {capacity}
+                </strong>
+
+                <span>attendees registered</span>
+              </div>
+
+              <div
+                className="registration-progress"
+                role="progressbar"
+                aria-label="Conference occupancy"
+                aria-valuenow={registeredCount}
+                aria-valuemin={0}
+                aria-valuemax={capacity}
+              >
+                <div
+                  className="registration-progress-fill"
+                  style={{
+                    width: `${occupancyPercentage}%`,
+                  }}
+                />
+              </div>
+
+              <p
+                className={
+                  fullyBooked
+                    ? "registration-availability is-full"
+                    : "registration-availability"
+                }
+              >
+                {fullyBooked
+                  ? "Fully booked"
+                  : `${availableSeats} seats available`}
+              </p>
+            </div>
+
             <div className="registration-info">
               <span>
                 <Users size={18} />
-                {conference._count.registrations} registered
+                {registeredCount} registered
               </span>
 
               <span>
@@ -232,17 +486,60 @@ export default function ConferenceDetails() {
             </div>
 
             {registered ? (
-              <div className="registered-state">
-                <CheckCircle2 size={19} />
-                You're registered
-              </div>
+              <>
+                <div className="registered-state">
+                  <CheckCircle2 size={19} />
+                  You're registered
+                </div>
+
+                <button
+                  className="registration-cancel-button"
+                  type="button"
+                  disabled={processing}
+                  onClick={() =>
+                    void handleCancelRegistration()
+                  }
+                >
+                  <XCircle size={17} />
+                  {processing
+                    ? "Cancelling..."
+                    : "Cancel registration"}
+                </button>
+              </>
+            ) : !user ? (
+              <Link
+                className="action-button registration-button"
+                to="/login"
+              >
+                Log in to register
+              </Link>
+            ) : !isAttendee ? (
+              <p className="registration-notice">
+                Registration is available for attendee
+                accounts only.
+              </p>
+            ) : isPast ? (
+              <button
+                className="action-button registration-button"
+                disabled
+              >
+                Event has ended
+              </button>
+            ) : fullyBooked ? (
+              <button
+                className="action-button registration-button"
+                disabled
+              >
+                Fully booked
+              </button>
             ) : (
               <button
                 className="action-button registration-button"
-                disabled={registering}
+                type="button"
+                disabled={!canRegister || processing}
                 onClick={() => void handleRegister()}
               >
-                {registering
+                {processing
                   ? "Registering..."
                   : "Register for conference"}
               </button>

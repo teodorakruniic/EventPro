@@ -11,19 +11,31 @@ export interface Conference {
   title: string;
   description: string | null;
   location: string;
+  capacity: number;
   startsAt: string;
   endsAt: string;
   status: ConferenceStatus;
   organizerId: string;
+  createdAt?: string;
+  updatedAt?: string;
   organizer?: {
+    id?: string;
     firstName: string;
     lastName: string;
+    email?: string;
+  };
+  _count?: {
+    registrations: number;
   };
 }
 
 export type ConferenceInput = Pick<
   Conference,
-  "title" | "location" | "startsAt" | "endsAt"
+  | "title"
+  | "location"
+  | "capacity"
+  | "startsAt"
+  | "endsAt"
 > & {
   description: string;
 };
@@ -33,6 +45,7 @@ export interface ConferenceTalk {
   id: string;
   title: string;
   description: string;
+  status?: "PENDING" | "ACCEPTED" | "REJECTED";
   startsAt: string | null;
   endsAt: string | null;
   speaker: {
@@ -58,6 +71,23 @@ export interface ConferenceRegistrationStatus {
   registered: boolean;
 }
 
+// Registration record
+export interface ConferenceRegistration {
+  id: string;
+  userId: string;
+  conferenceId: string;
+  createdAt: string;
+}
+
+export interface ConferenceRegistrationResponse {
+  message: string;
+  registration: ConferenceRegistration;
+}
+
+export interface ConferenceCancellationResponse {
+  message: string;
+}
+
 // Shared API request helper
 export async function conferenceRequest<T>(
   path: string,
@@ -66,7 +96,7 @@ export async function conferenceRequest<T>(
   const token = sessionStorage.getItem("eventpro_token");
   const headers = new Headers(options.headers);
 
-  if (options.body) {
+  if (options.body != null && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -166,17 +196,19 @@ export const getConferenceRegistration = (id: string) =>
 
 // Register the current user for a conference
 export const registerForConference = (id: string) =>
-  conferenceRequest<{
-    message: string;
-    registration: {
-      id: string;
-      userId: string;
-      conferenceId: string;
-      createdAt: string;
-    };
-  }>(
+  conferenceRequest<ConferenceRegistrationResponse>(
     `/${encodeURIComponent(id)}/register`,
     {
       method: "POST",
+    }
+  );
+
+// Cancel the current user's conference registration
+// Requires DELETE /api/conferences/:id/registration
+export const cancelConferenceRegistration = (id: string) =>
+  conferenceRequest<ConferenceCancellationResponse>(
+    `/${encodeURIComponent(id)}/registration`,
+    {
+      method: "DELETE",
     }
   );
