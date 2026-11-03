@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { prisma } from "./lib/prisma.js";
+import "dotenv/config";
+import authRoutes from "./routes/auth.routes.js";
+import conferenceRoutes from "./routes/conference.routes.js";
 
 dotenv.config();
 
@@ -11,6 +14,8 @@ const PORT = Number(process.env.PORT) || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/auth", authRoutes);
+app.use("/api/conferences", conferenceRoutes);
 
 // Health check endpoint
 app.get("/api/health", (_req, res) => {
