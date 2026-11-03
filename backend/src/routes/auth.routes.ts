@@ -7,13 +7,18 @@ import { generateToken } from "../lib/auth.js";
 
 const router = Router();
 
+// Registration validation
 const registerSchema = z.object({
   firstName: z.string().trim().min(2).max(100),
   lastName: z.string().trim().min(2).max(100),
   email: z.email().trim().toLowerCase(),
   password: z.string().min(8).max(128),
+  role: z
+    .enum(["ATTENDEE", "SPEAKER", "ORGANIZER"])
+    .default("ATTENDEE"),
 });
 
+// Register a new user
 router.post("/register", async (req, res) => {
   const result = registerSchema.safeParse(req.body);
 
@@ -25,7 +30,13 @@ router.post("/register", async (req, res) => {
     return;
   }
 
-  const { firstName, lastName, email, password } = result.data;
+  const {
+    firstName,
+    lastName,
+    email,
+    password,
+    role,
+  } = result.data;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -47,7 +58,7 @@ router.post("/register", async (req, res) => {
         lastName,
         email,
         passwordHash,
-        role: "ATTENDEE",
+        role,
       },
       select: {
         id: true,
@@ -74,69 +85,69 @@ router.post("/register", async (req, res) => {
   }
 });
 
-
+// Login validation
 const loginSchema = z.object({
-    email: z.email().trim().toLowerCase(),
-    password: z.string().min(1),
-  });
-  
-  router.post("/login", async (req, res) => {
-    const result = loginSchema.safeParse(req.body);
-  
-    if (!result.success) {
-      res.status(400).json({
-        message: "Invalid login data",
+  email: z.email().trim().toLowerCase(),
+  password: z.string().min(1),
+});
+
+// Login existing user
+router.post("/login", async (req, res) => {
+  const result = loginSchema.safeParse(req.body);
+
+  if (!result.success) {
+    res.status(400).json({
+      message: "Invalid login data",
+    });
+    return;
+  }
+
+  const { email, password } = result.data;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      res.status(401).json({
+        message: "Invalid email or password",
       });
       return;
     }
-  
-    const { email, password } = result.data;
-  
-    try {
-      const user = await prisma.user.findUnique({
-        where: { email },
+
+    const isPasswordValid = await argon2.verify(
+      user.passwordHash,
+      password
+    );
+
+    if (!isPasswordValid) {
+      res.status(401).json({
+        message: "Invalid email or password",
       });
-  
-      if (!user) {
-        res.status(401).json({
-          message: "Invalid email or password",
-        });
-        return;
-      }
-  
-      const isPasswordValid = await argon2.verify(
-        user.passwordHash,
-        password
-      );
-  
-      if (!isPasswordValid) {
-        res.status(401).json({
-          message: "Invalid email or password",
-        });
-        return;
-      }
-  
-      const token = generateToken(user.id);
-  
-      res.status(200).json({
-        message: "Login successful",
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role,
-        },
-        token,
-      });
-    } catch (error) {
-      console.error("Login failed:", error);
-  
-      res.status(500).json({
-        message: "Internal server error",
-      });
+      return;
     }
-  });
-  
+
+    const token = generateToken(user.id);
+
+    res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("Login failed:", error);
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+});
 
 export default router;
