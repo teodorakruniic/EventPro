@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ArrowRight,
   CheckCircle2,
+  Ticket,
 } from "lucide-react";
 
 import {
@@ -21,6 +22,8 @@ import {
 } from "../services/reservations";
 
 import SeatPicker from "../components/SeatPicker";
+import TicketModal from "../components/TicketModal";
+
 import "./MySchedule.css";
 
 type ReservationWithSeat = Reservation & {
@@ -52,9 +55,14 @@ export default function MySchedule() {
 
   const [loading, setLoading] = useState(true);
   const [busyTalkId, setBusyTalkId] = useState<string | null>(null);
-  const [selectedTalkId, setSelectedTalkId] = useState<string | null>(
-    null
-  );
+
+  const [selectedTalkId, setSelectedTalkId] = useState<
+    string | null
+  >(null);
+
+  const [selectedTicketId, setSelectedTicketId] = useState<
+    string | null
+  >(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -295,6 +303,17 @@ export default function MySchedule() {
                 </div>
 
                 <div className="my-schedule-actions">
+                  <button
+                    type="button"
+                    className="schedule-primary-button"
+                    onClick={() =>
+                      setSelectedTicketId(reservation.id)
+                    }
+                  >
+                    <Ticket size={16} />
+                    View Ticket
+                  </button>
+
                   <Link
                     to={`/conferences/${reservation.talk.conference.id}/program`}
                     className="schedule-secondary-button"
@@ -329,6 +348,13 @@ export default function MySchedule() {
           onUpdated={async () => {
             await loadReservations();
           }}
+        />
+      )}
+
+      {selectedTicketId && (
+        <TicketModal
+          reservationId={selectedTicketId}
+          onClose={() => setSelectedTicketId(null)}
         />
       )}
     </div>

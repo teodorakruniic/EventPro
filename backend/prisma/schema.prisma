@@ -110,11 +110,14 @@ model ConferenceRegistration {
 }
 
 model TalkReservation {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  talkId     String   @db.Uuid
-  seatNumber String?
-  createdAt  DateTime @default(now())
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  talkId      String    @db.Uuid
+  seatNumber  String?
+  ticketToken String    @unique @default(uuid()) @db.Uuid
+  checkedInAt DateTime?
+  checkedInBy String?   @db.Uuid
+  createdAt   DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id])
   talk Talk @relation(fields: [talkId], references: [id], onDelete: Cascade)

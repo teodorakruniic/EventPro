@@ -179,4 +179,226 @@ router.delete("/talks/:talkId", requireAuth, async (req: AuthRequest, res) => {
     res.status(204).send();
   } catch (error) { serverError(res, error); }
 });
+
+
+const ticketSchema = z.object({
+  reservationId: uuidSchema,
+});
+
+const checkInSchema = z.object({
+  ticketToken: uuidSchema,
+});
+
+// GET /api/reservations/tickets/:reservationId
+router.get(
+  "/tickets/:reservationId",
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    const parsed = ticketSchema.safeParse(req.params);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        message: "Invalid reservation ID.",
+      });
+      return;
+    }
+
+    try {
+      const attendee = await getAttendee(req.userId);
+
+      if (!attendee) {
+        res.status(403).json({
+          message: "Attendee access required.",
+        });
+        return;
+      }
+
+      const reservation = await prisma.talkReservation.findFirst({
+        where: {
+          id: parsed.data.reservationId,
+          userId: attendee.id,
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          talk: {
+            include: {
+              room: {
+                select: {
+                  name: true,
+                },
+              },
+              conference: {
+                select: {
+                  id: true,
+                  title: true,
+                  location: true,
+                  status: true,
+                  organizerId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!reservation) {
+        res.status(404).json({
+          message: "Ticket not found.",
+        });
+        return;
+      }
+
+      res.json({
+        id: reservation.id,
+        ticketToken: reservation.ticketToken,
+        attendee: reservation.user,
+        seatNumber: reservation.seatNumber,
+        checkedInAt: reservation.checkedInAt,
+        talk: {
+          id: reservation.talk.id,
+          title: reservation.talk.title,
+          startsAt: reservation.talk.startsAt,
+          endsAt: reservation.talk.endsAt,
+          room: reservation.talk.room,
+        },
+        conference: reservation.talk.conference,
+      });
+    } catch (error) {
+      serverError(res, error);
+    }
+  }
+);
+
+// POST /api/reservations/check-in
+router.post(
+  "/check-in",
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    const parsed = checkInSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        message: "A valid ticket token is required.",
+      });
+      return;
+    }
+
+    try {
+      if (!req.userId) {
+        res.status(401).json({
+          message: "Authentication required.",
+        });
+        return;
+      }
+
+      const organizer = await prisma.user.findFirst({
+        where: {
+          id: req.userId,
+          role: "ORGANIZER",
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!organizer) {
+        res.status(403).json({
+          message: "Organizer access required.",
+        });
+        return;
+      }
+
+      const reservation = await prisma.talkReservation.findUnique({
+        where: {
+          ticketToken: parsed.data.ticketToken,
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+          talk: {
+            include: {
+              conference: true,
+              room: true,
+            },
+          },
+        },
+      });
+
+      if (!reservation) {
+        res.status(404).json({
+          message: "Invalid ticket.",
+        });
+        return;
+      }
+
+      if (
+        reservation.talk.conference.organizerId !== organizer.id
+      ) {
+        res.status(403).json({
+          message:
+            "You cannot check in attendees for this conference.",
+        });
+        return;
+      }
+
+      if (
+        reservation.talk.status !== "ACCEPTED" ||
+        reservation.talk.conference.status !== "PUBLISHED"
+      ) {
+        res.status(409).json({
+          message: "This ticket is not currently valid.",
+        });
+        return;
+      }
+
+      if (reservation.checkedInAt) {
+        res.status(409).json({
+          message: "This ticket has already been checked in.",
+          checkedInAt: reservation.checkedInAt,
+        });
+        return;
+      }
+
+      const result = await prisma.talkReservation.updateMany({
+        where: {
+          id: reservation.id,
+          checkedInAt: null,
+        },
+        data: {
+          checkedInAt: new Date(),
+          checkedInBy: organizer.id,
+        },
+      });
+
+      if (result.count === 0) {
+        res.status(409).json({
+          message: "This ticket has already been checked in.",
+        });
+        return;
+      }
+
+      res.json({
+        message: "Check-in completed successfully.",
+        reservationId: reservation.id,
+        attendee: reservation.user,
+        talk: reservation.talk.title,
+        seatNumber: reservation.seatNumber,
+        checkedIn: true,
+      });
+    } catch (error) {
+      serverError(res, error);
+    }
+  }
+);
+
 export default router;

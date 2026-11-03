@@ -18,6 +18,7 @@ import {
   CalendarClock,
   CalendarCheck2,
   UserRound,
+  ScanLine,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -95,6 +96,14 @@ export default function AppLayout() {
               >
                 <CalendarClock size={19} />
                 <span>Conference Schedule</span>
+              </NavLink>
+
+              <NavLink
+                to="/check-in"
+                className={navClass}
+              >
+                <ScanLine size={19} />
+                <span>Ticket Check-in</span>
               </NavLink>
             </>
           )}
