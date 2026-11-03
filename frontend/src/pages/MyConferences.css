@@ -1,0 +1,121 @@
+.conference-manager .conference-manager-card {
+  overflow: hidden;
+  padding: 0;
+}
+.conference-manager-cover {
+  position: relative;
+  height: 190px;
+  background: #e8eef7;
+  overflow: hidden;
+}
+.conference-manager-cover > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.conference-manager-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #71819b;
+  background: linear-gradient(135deg, #e9eff9, #dbe5f5);
+  font-size: 12px;
+  font-weight: 600;
+}
+.conference-manager-cover > .status-pill {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1;
+}
+.conference-manager-image-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+.conference-manager-image-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dbe4f1;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #213453;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.conference-manager-image-actions button:hover:not(:disabled) {
+  background: white;
+}
+.conference-manager-image-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.conference-manager-body {
+  padding: 22px;
+}
+.conference-manager-body h3 {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+}
+.conference-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.conference-manager-actions button,
+.conference-manager-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.conference-manager-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.conference-manager-archived {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  padding: 8px;
+}
+.conference-manager-notice {
+  padding: 13px 16px;
+  margin: 14px 0;
+  border: 1px solid #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.conference-manager-hint {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 24px;
+  color: #64748b;
+  font-size: 12px;
+}
+@media (max-width: 680px) {
+  .conference-manager-cover {
+    height: 165px;
+  }
+  .conference-manager-body {
+    padding: 18px;
+  }
+  .conference-manager-hint {
+    align-items: flex-start;
+  }
+}

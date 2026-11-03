@@ -1,0 +1,21 @@
+.event-details-cover {
+  width: 100%;
+  height: clamp(210px, 32vw, 410px);
+  border-radius: 18px;
+  overflow: hidden;
+  margin: 20px 0 22px;
+  background: #e8eef5;
+  border: 1px solid #e2e8f0;
+}
+.event-details-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 650px) {
+  .event-details-cover {
+    border-radius: 12px;
+    margin: 16px 0;
+  }
+}

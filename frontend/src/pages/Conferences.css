@@ -1,0 +1,144 @@
+/* Explore Conferences */
+.explore-toolbar {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0 12px;
+}
+.explore-search,
+.explore-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #dfe5ed;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 14px;
+  min-height: 46px;
+  color: #64748b;
+}
+.explore-search {
+  flex: 2 1 260px;
+}
+.explore-search input,
+.explore-select-wrap select {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  width: 100%;
+  min-width: 0;
+  color: #17243b;
+  font: inherit;
+}
+.explore-select-wrap {
+  flex: 1 1 175px;
+}
+.explore-refresh {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  min-height: 46px;
+  border: 1px solid #dfe5ed;
+  border-radius: 12px;
+  background: #fff;
+  color: #263a57;
+  cursor: pointer;
+}
+.explore-refresh:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.explore-results-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+.explore-card {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.explore-card-media {
+  display: block;
+  position: relative;
+  height: 188px;
+  overflow: hidden;
+  background: #e8eef5;
+}
+.explore-card-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+}
+.explore-card-media:hover img {
+  transform: scale(1.04);
+}
+.explore-card-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(135deg, #e5edf9, #d9e7ef);
+  color: #637b9a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.explore-card-badges {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.explore-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 22px;
+}
+.explore-card-body h3 {
+  margin: 0 0 10px;
+}
+.explore-card-body .conference-description {
+  margin-bottom: 16px;
+}
+.explore-card-body .conference-meta {
+  margin-bottom: 16px;
+}
+.explore-card-body .conference-capacity-info {
+  margin-top: auto;
+}
+.explore-card-body .conference-view-link {
+  margin-top: 18px;
+}
+@keyframes explore-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.explore-spinning {
+  animation: explore-spin 0.9s linear infinite;
+}
+@media (max-width: 650px) {
+  .explore-search,
+  .explore-select-wrap {
+    flex-basis: 100%;
+  }
+  .explore-card-media {
+    height: 175px;
+  }
+}

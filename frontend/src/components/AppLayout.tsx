@@ -1,5 +1,10 @@
 
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  useNavigate,
+} from "react-router-dom";
+
 import {
   CalendarDays,
   LayoutDashboard,
@@ -11,9 +16,12 @@ import {
   ClipboardList,
   Send,
   CalendarClock,
+  CalendarCheck2,
+  UserRound,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import { getAvatarUrl } from "../services/api";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -26,6 +34,12 @@ export default function AppLayout() {
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `nav-item ${isActive ? "active" : ""}`;
+
+  const avatarUrl = getAvatarUrl(user?.avatarUrl);
+
+  const initials = `${user?.firstName?.charAt(0) ?? ""}${
+    user?.lastName?.charAt(0) ?? ""
+  }`.toUpperCase();
 
   return (
     <div className="dashboard-layout">
@@ -51,22 +65,34 @@ export default function AppLayout() {
 
           {user?.role === "ORGANIZER" && (
             <>
-              <NavLink to="/my-conferences" className={navClass}>
+              <NavLink
+                to="/my-conferences"
+                className={navClass}
+              >
                 <FolderKanban size={19} />
                 <span>My Conferences</span>
               </NavLink>
 
-              <NavLink to="/conferences/new" className={navClass}>
+              <NavLink
+                to="/conferences/new"
+                className={navClass}
+              >
                 <Plus size={19} />
                 <span>Create Conference</span>
               </NavLink>
 
-              <NavLink to="/talks/review" className={navClass}>
+              <NavLink
+                to="/talks/review"
+                className={navClass}
+              >
                 <ClipboardList size={19} />
                 <span>Review Talks</span>
               </NavLink>
 
-              <NavLink to="/schedule" className={navClass}>
+              <NavLink
+                to="/schedule"
+                className={navClass}
+              >
                 <CalendarClock size={19} />
                 <span>Conference Schedule</span>
               </NavLink>
@@ -75,24 +101,73 @@ export default function AppLayout() {
 
           {user?.role === "SPEAKER" && (
             <>
-              <NavLink to="/my-talks" className={navClass}>
+              <NavLink
+                to="/my-talks"
+                className={navClass}
+              >
                 <Mic2 size={19} />
                 <span>My Talks</span>
               </NavLink>
 
-              <NavLink to="/talks/new" className={navClass}>
+              <NavLink
+                to="/talks/new"
+                className={navClass}
+              >
                 <Send size={19} />
                 <span>Submit Talk</span>
               </NavLink>
             </>
           )}
+
+          {user?.role === "ATTENDEE" && (
+            <NavLink
+              to="/my-schedule"
+              className={navClass}
+            >
+              <CalendarCheck2 size={19} />
+              <span>My Schedule</span>
+            </NavLink>
+          )}
+
+          <NavLink
+            to="/profile"
+            className={navClass}
+          >
+            <UserRound size={19} />
+            <span>My Profile</span>
+          </NavLink>
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="sidebar-user">
-            <div className="user-avatar">
-              {user?.firstName?.charAt(0)}
-              {user?.lastName?.charAt(0)}
+          <NavLink
+            to="/profile"
+            className="sidebar-user"
+            style={{
+              textDecoration: "none",
+              color: "inherit",
+            }}
+          >
+            <div
+              className="user-avatar"
+              style={{
+                overflow: "hidden",
+                flexShrink: 0,
+              }}
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    borderRadius: "50%",
+                  }}
+                />
+              ) : (
+                initials || "EP"
+              )}
             </div>
 
             <div>
@@ -101,7 +176,7 @@ export default function AppLayout() {
               </strong>
               <small>{user?.role}</small>
             </div>
-          </div>
+          </NavLink>
 
           <button
             type="button"
