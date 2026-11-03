@@ -1317,3 +1317,752 @@
   }
 }
 
+/* Conference Details - capacity and registration */
+
+.conference-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.conference-detail-facts > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #26354a;
+}
+
+.conference-detail-facts > div > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.conference-detail-facts strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.conference-detail-facts span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.registration-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.registration-card-heading h3 {
+  margin: 0;
+}
+
+.registration-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.registration-refresh:hover {
+  color: #26354a;
+  background: #f8fafc;
+}
+
+.registration-capacity {
+  margin: 22px 0;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.registration-capacity-numbers {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+
+.registration-capacity-numbers strong {
+  color: #26354a;
+  font-size: 22px;
+}
+
+.registration-capacity-numbers span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.registration-progress {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.registration-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #26354a;
+  transition: width 0.25s ease;
+}
+
+.registration-availability {
+  margin: 11px 0 0;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.registration-availability.is-full {
+  color: #be123c;
+}
+
+.registration-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid #fecdd3;
+  border-radius: 9px;
+  background: #fff1f2;
+  color: #be123c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.registration-cancel-button:hover {
+  background: #ffe4e6;
+}
+
+.registration-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.registration-notice {
+  padding: 12px;
+  border-radius: 9px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+}
+
+.session-time-range {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .conference-detail-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-capacity-numbers {
+    flex-wrap: wrap;
+  }
+}
+
+/* ==========================================
+   EXPLORE CONFERENCES - FINAL STYLING
+   ========================================== */
+
+   .conference-explore-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 26px 0 16px;
+    width: 100%;
+  }
+  
+  .conference-search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 340px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0 15px;
+    background: #ffffff;
+    border: 1px solid #dfe5ee;
+    border-radius: 11px;
+    color: #8190a4;
+    box-sizing: border-box;
+  }
+  
+  .conference-search-wrapper:focus-within {
+    border-color: #8294ac;
+    box-shadow: 0 0 0 3px rgba(38, 53, 74, 0.07);
+  }
+  
+  .conference-search-wrapper .conference-search {
+    display: block;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    box-shadow: none;
+    color: #26354a;
+    font: inherit;
+    font-size: 14px;
+  }
+  
+  .conference-search-wrapper .conference-search::placeholder {
+    color: #94a3b8;
+  }
+  
+  .conference-sort {
+    flex: 0 0 205px;
+    width: 205px;
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid #dfe5ee;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #26354a;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  
+  .conference-refresh-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid #dfe5ee;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #52647d;
+    cursor: pointer;
+  }
+  
+  .conference-refresh-button:hover {
+    background: #f1f5f9;
+  }
+  
+  .conference-filter-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin: 2px 0 10px;
+    color: #64748b;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  
+  .conference-filter-checkbox input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: #26354a;
+  }
+  
+  .conference-results-count {
+    margin: 12px 0 20px;
+    color: #8190a4;
+    font-size: 13px;
+  }
+  
+  /* Cards */
+  
+  .conference-grid {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(100%, 310px), 1fr)
+    );
+    gap: 22px;
+    align-items: stretch;
+  }
+  
+  .conference-grid .conference-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+    padding: 26px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 3px 16px rgba(25, 41, 61, 0.035);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+  
+  .conference-grid .conference-card:hover {
+    transform: translateY(-3px);
+    border-color: #cbd5e1;
+    box-shadow: 0 12px 28px rgba(25, 41, 61, 0.075);
+  }
+  
+  .conference-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  
+  .conference-grid .conference-card h3 {
+    margin: 0 0 10px;
+    color: #26354a;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  
+  .conference-grid .conference-card h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+  .conference-grid .conference-card h3 a:hover {
+    color: #506581;
+  }
+  
+  .conference-grid .conference-description {
+    margin: 0 0 22px;
+    color: #8190a4;
+    font-size: 13px;
+    line-height: 1.65;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+  
+  .conference-grid .conference-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 0;
+  }
+  
+  .conference-grid .conference-meta > span {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  
+  .conference-grid .conference-meta svg {
+    flex: 0 0 auto;
+    color: #8ca0b9;
+  }
+  
+  /* Capacity */
+  
+  .conference-grid .conference-capacity-info {
+    display: block;
+    margin-top: 23px;
+    padding-top: 18px;
+    border-top: 1px solid #edf1f5;
+  }
+  
+  .conference-grid .conference-capacity-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .conference-grid .conference-capacity-heading > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  
+  .conference-grid .conference-capacity-heading > span:last-child {
+    text-align: right;
+    color: #26354a;
+    font-weight: 600;
+  }
+  
+  .conference-grid .conference-capacity-heading svg {
+    flex: 0 0 auto;
+  }
+  
+  .conference-grid .conference-capacity-track {
+    display: block;
+    width: 100%;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8edf3;
+  }
+  
+  .conference-grid .conference-capacity-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: #26354a;
+    transition: width 0.25s ease;
+  }
+  
+  /* View details */
+  
+  .conference-grid .conference-view-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    margin-top: 22px;
+    color: #26354a;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  
+  .conference-grid .conference-view-link:hover {
+    color: #506581;
+  }
+  
+  .conference-grid .conference-view-link svg {
+    transition: transform 0.2s ease;
+  }
+  
+  .conference-grid .conference-view-link:hover svg {
+    transform: translateX(3px);
+  }
+  
+  @media (max-width: 900px) {
+    .conference-explore-toolbar {
+      flex-wrap: wrap;
+    }
+  
+    .conference-search-wrapper {
+      flex-basis: 100%;
+    }
+  
+    .conference-sort {
+      flex: 1;
+      width: auto;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .conference-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .conference-grid .conference-card {
+      padding: 22px;
+    }
+  
+    .conference-capacity-heading {
+      flex-wrap: wrap;
+    }
+  }
+  
+/* ==========================================
+   MY CONFERENCES
+   ========================================== */
+
+.my-conference-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 26px 0;
+}
+
+.my-conference-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.my-conference-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: #eef2f7;
+  color: #26354a;
+}
+
+.my-conference-stat > span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.my-conference-stat > strong {
+  color: #26354a;
+  font-size: 27px;
+  line-height: 1.2;
+}
+
+.my-conference-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 16px;
+}
+
+.my-conference-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 48px;
+  padding: 0 15px;
+  border: 1px solid #dfe5ee;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #8190a4;
+  box-sizing: border-box;
+}
+
+.my-conference-search:focus-within {
+  border-color: #8294ac;
+  box-shadow: 0 0 0 3px rgba(38, 53, 74, 0.07);
+}
+
+.my-conference-search input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #26354a;
+  font: inherit;
+  font-size: 14px;
+}
+
+.my-conference-search input::placeholder {
+  color: #94a3b8;
+}
+
+.my-conference-filter {
+  flex: 0 0 170px;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #26354a;
+  font: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.my-conference-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid #dfe5ee;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #52647d;
+  cursor: pointer;
+}
+
+.my-conference-refresh:hover {
+  background: #f1f5f9;
+}
+
+.my-conference-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-conference-count {
+  margin: 12px 0 20px;
+  color: #8190a4;
+  font-size: 13px;
+}
+
+.my-conference-card {
+  min-width: 0;
+}
+
+.my-conference-capacity {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #edf1f5;
+}
+
+.my-conference-capacity-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.my-conference-capacity-heading > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.my-conference-capacity-heading > strong {
+  color: #26354a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.my-conference-progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf3;
+}
+
+.my-conference-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #26354a;
+  transition: width 0.25s ease;
+}
+
+.my-conference-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.my-conference-card-actions button,
+.my-conference-card-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26354a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.my-conference-card-actions button:hover,
+.my-conference-card-actions a:hover {
+  background: #f1f5f9;
+}
+
+.my-conference-card-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-conference-card-actions .my-publish-button {
+  border-color: #26354a;
+  background: #26354a;
+  color: #ffffff;
+}
+
+.my-conference-card-actions .my-publish-button:hover {
+  background: #34465e;
+}
+
+.my-conference-card-actions .danger-action {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.my-conference-card-actions .danger-action:hover {
+  background: #ffe4e6;
+}
+
+.my-conference-info-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .my-conference-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .my-conference-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .my-conference-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .my-conference-search {
+    flex-basis: 100%;
+  }
+
+  .my-conference-filter {
+    flex: 1 1 auto;
+  }
+
+  .my-conference-card-actions {
+    align-items: stretch;
+  }
+}
+

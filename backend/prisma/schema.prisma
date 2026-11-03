@@ -47,11 +47,13 @@ model User {
   talkReservations        TalkReservation[]
 }
 
+
 model Conference {
   id          String           @id @default(uuid()) @db.Uuid
   title       String
   description String?
   location    String
+  capacity    Int              @default(100)
   startsAt    DateTime
   endsAt      DateTime
   status      ConferenceStatus @default(DRAFT)
@@ -64,6 +66,7 @@ model Conference {
   talks         Talk[]
   registrations ConferenceRegistration[]
 }
+
 
 model Room {
   id           String @id @default(uuid()) @db.Uuid
