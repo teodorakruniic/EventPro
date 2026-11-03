@@ -7,7 +7,11 @@ import {
   FolderKanban,
   Plus,
   LogOut,
+  Mic2,
+  ClipboardList,
+  Send,
 } from "lucide-react";
+
 import { useAuth } from "../context/AuthContext";
 
 export default function AppLayout() {
@@ -19,6 +23,9 @@ export default function AppLayout() {
     navigate("/login", { replace: true });
   }
 
+  const navClass = ({ isActive }: { isActive: boolean }) =>
+    `nav-item ${isActive ? "active" : ""}`;
+
   return (
     <div className="dashboard-layout">
       <aside className="sidebar">
@@ -27,10 +34,14 @@ export default function AppLayout() {
           <span>EventPro</span>
         </div>
 
-        <nav className="sidebar-nav" aria-label="Main navigation">
+        <nav
+          className="sidebar-nav"
+          aria-label="Main navigation"
+        >
+          {/* Navigation available to all users */}
           <NavLink
             to="/dashboard"
-            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+            className={navClass}
           >
             <LayoutDashboard size={19} />
             <span>Dashboard</span>
@@ -38,17 +49,18 @@ export default function AppLayout() {
 
           <NavLink
             to="/conferences"
-            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+            className={navClass}
           >
             <CalendarRange size={19} />
             <span>Explore Conferences</span>
           </NavLink>
 
+          {/* Organizer navigation */}
           {user?.role === "ORGANIZER" && (
             <>
               <NavLink
                 to="/my-conferences"
-                className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+                className={navClass}
               >
                 <FolderKanban size={19} />
                 <span>My Conferences</span>
@@ -56,10 +68,39 @@ export default function AppLayout() {
 
               <NavLink
                 to="/conferences/new"
-                className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+                className={navClass}
               >
                 <Plus size={19} />
                 <span>Create Conference</span>
+              </NavLink>
+
+              <NavLink
+                to="/talks/review"
+                className={navClass}
+              >
+                <ClipboardList size={19} />
+                <span>Review Talks</span>
+              </NavLink>
+            </>
+          )}
+
+          {/* Speaker navigation */}
+          {user?.role === "SPEAKER" && (
+            <>
+              <NavLink
+                to="/my-talks"
+                className={navClass}
+              >
+                <Mic2 size={19} />
+                <span>My Talks</span>
+              </NavLink>
+
+              <NavLink
+                to="/talks/new"
+                className={navClass}
+              >
+                <Send size={19} />
+                <span>Submit Talk</span>
               </NavLink>
             </>
           )}
@@ -71,13 +112,20 @@ export default function AppLayout() {
               {user?.firstName?.charAt(0)}
               {user?.lastName?.charAt(0)}
             </div>
+
             <div>
-              <strong>{user?.firstName} {user?.lastName}</strong>
+              <strong>
+                {user?.firstName} {user?.lastName}
+              </strong>
               <small>{user?.role}</small>
             </div>
           </div>
 
-          <button className="logout-button" onClick={handleLogout}>
+          <button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+          >
             <LogOut size={19} />
             <span>Sign out</span>
           </button>
