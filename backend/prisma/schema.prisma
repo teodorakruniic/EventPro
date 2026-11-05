@@ -44,6 +44,7 @@ model User {
   talks                   Talk[]                   @relation("TalkSpeaker")
   conferenceRegistrations ConferenceRegistration[]
   talkReservations        TalkReservation[]
+  waitlistEntries         WaitlistEntry[]
 }
 
 model Conference {
@@ -91,10 +92,11 @@ model Talk {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  speaker      User              @relation("TalkSpeaker", fields: [speakerId], references: [id])
-  conference   Conference        @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
-  room         Room?             @relation(fields: [roomId], references: [id])
-  reservations TalkReservation[]
+  speaker         User              @relation("TalkSpeaker", fields: [speakerId], references: [id])
+  conference      Conference        @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+  room            Room?             @relation(fields: [roomId], references: [id])
+  reservations    TalkReservation[]
+  waitlistEntries WaitlistEntry[]
 }
 
 model ConferenceRegistration {
@@ -124,4 +126,17 @@ model TalkReservation {
 
   @@unique([userId, talkId])
   @@unique([talkId, seatNumber])
+}
+
+model WaitlistEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  talkId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  talk Talk @relation(fields: [talkId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, talkId])
+  @@index([talkId, createdAt, id])
 }

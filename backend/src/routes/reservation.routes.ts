@@ -42,6 +42,69 @@ function buildSeatNumbers(capacity: number): string[] {
   return result;
 }
 
+// Serialize reservation and waitlist changes for the same talk.
+export async function lockTalk(tx: Prisma.TransactionClient, talkId: string) {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${talkId}))::text AS lock_result`;
+}
+
+export async function promoteFromWaitlist(
+  tx: Prisma.TransactionClient,
+  talkId: string,
+  preferredSeat: string | null
+) {
+  const talk = await tx.talk.findUnique({
+    where: { id: talkId },
+    include: { room: true, conference: { select: { status: true } } },
+  });
+  if (!talk || talk.status !== "ACCEPTED" || talk.conference.status !== "PUBLISHED" ||
+      !talk.room || !talk.startsAt || !talk.endsAt || talk.startsAt <= new Date()) return null;
+
+  const reservations = await tx.talkReservation.findMany({
+    where: { talkId }, select: { userId: true, seatNumber: true },
+  });
+  if (reservations.length >= talk.room.capacity) return null;
+
+  const occupied = new Set(reservations.flatMap(r => r.seatNumber ? [r.seatNumber] : []));
+  const freeSeats = buildSeatNumbers(talk.room.capacity).filter(seat => !occupied.has(seat));
+  const seat = preferredSeat && freeSeats.includes(preferredSeat) ? preferredSeat : freeSeats[0];
+  if (!seat) return null;
+
+  const queue = await tx.waitlistEntry.findMany({
+    where: { talkId }, orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+
+  for (const entry of queue) {
+    const registration = await tx.conferenceRegistration.findUnique({
+      where: { userId_conferenceId: { userId: entry.userId, conferenceId: talk.conferenceId } },
+      select: { id: true },
+    });
+    const existing = await tx.talkReservation.findUnique({
+      where: { userId_talkId: { userId: entry.userId, talkId } }, select: { id: true },
+    });
+    if (existing) {
+      await tx.waitlistEntry.delete({ where: { id: entry.id } });
+      continue;
+    }
+    if (!registration) continue;
+
+    const conflict = await tx.talkReservation.findFirst({
+      where: {
+        userId: entry.userId,
+        talk: { startsAt: { lt: talk.endsAt }, endsAt: { gt: talk.startsAt } },
+      },
+      select: { id: true },
+    });
+    if (conflict) continue;
+
+    const reservation = await tx.talkReservation.create({
+      data: { userId: entry.userId, talkId, seatNumber: seat },
+    });
+    await tx.waitlistEntry.delete({ where: { id: entry.id } });
+    return reservation;
+  }
+  return null;
+}
+
 // GET /api/reservations/my
 router.get("/my", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -109,6 +172,105 @@ router.get("/talks/:talkId/seats", requireAuth, async (req: AuthRequest, res) =>
   } catch (error) { serverError(res, error); }
 });
 
+// GET /api/reservations/talks/:talkId/waitlist
+router.get("/talks/:talkId/waitlist", requireAuth, async (req: AuthRequest, res) => {
+  const parsed = uuidSchema.safeParse(req.params.talkId);
+  if (!parsed.success) { res.status(400).json({ message: "Invalid talk ID." }); return; }
+  try {
+    const attendee = await getAttendee(req.userId);
+    if (!attendee) { res.status(403).json({ message: "Attendee access required." }); return; }
+    const talk = await prisma.talk.findUnique({
+      where: { id: parsed.data }, include: { room: true, conference: { select: { status: true } } },
+    });
+    if (!talk || talk.status !== "ACCEPTED" || talk.conference.status !== "PUBLISHED" ||
+        !talk.room || !talk.startsAt || !talk.endsAt) {
+      res.status(404).json({ message: "Available talk not found." }); return;
+    }
+    const [queue, reservedCount, myReservation] = await Promise.all([
+      prisma.waitlistEntry.findMany({
+        where: { talkId: talk.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { id: true, userId: true },
+      }),
+      prisma.talkReservation.count({ where: { talkId: talk.id } }),
+      prisma.talkReservation.findUnique({
+        where: { userId_talkId: { userId: attendee.id, talkId: talk.id } },
+        select: { seatNumber: true },
+      }),
+    ]);
+    const index = queue.findIndex(item => item.userId === attendee.id);
+    res.json({
+      talkId: talk.id,
+      capacity: talk.room.capacity,
+      reservedCount,
+      isFull: reservedCount >= talk.room.capacity,
+      waitlistCount: queue.length,
+      isWaitlisted: index !== -1,
+      position: index === -1 ? null : index + 1,
+      hasReservation: Boolean(myReservation),
+      reservationClosed: talk.startsAt <= new Date(),
+    });
+  } catch (error) { serverError(res, error); }
+});
+
+// POST /api/reservations/talks/:talkId/waitlist
+router.post("/talks/:talkId/waitlist", requireAuth, async (req: AuthRequest, res) => {
+  const parsed = uuidSchema.safeParse(req.params.talkId);
+  if (!parsed.success) { res.status(400).json({ message: "Invalid talk ID." }); return; }
+  try {
+    const attendee = await getAttendee(req.userId);
+    if (!attendee) { res.status(403).json({ message: "Attendee access required." }); return; }
+    const result = await prisma.$transaction(async tx => {
+      await lockTalk(tx, parsed.data);
+      const talk = await tx.talk.findUnique({
+        where: { id: parsed.data }, include: { room: true, conference: { select: { status: true } } },
+      });
+      if (!talk || talk.status !== "ACCEPTED" || talk.conference.status !== "PUBLISHED" ||
+          !talk.room || !talk.startsAt || !talk.endsAt) {
+        return { status: 404, message: "Available talk not found." };
+      }
+      if (talk.startsAt <= new Date()) return { status: 409, message: "Waitlist is closed for this talk." };
+      const registration = await tx.conferenceRegistration.findUnique({
+        where: { userId_conferenceId: { userId: attendee.id, conferenceId: talk.conferenceId } },
+        select: { id: true },
+      });
+      if (!registration) return { status: 403, message: "Register for the conference first." };
+      const reservation = await tx.talkReservation.findUnique({
+        where: { userId_talkId: { userId: attendee.id, talkId: talk.id } }, select: { id: true },
+      });
+      if (reservation) return { status: 409, message: "You already reserved this talk." };
+      const existing = await tx.waitlistEntry.findUnique({
+        where: { userId_talkId: { userId: attendee.id, talkId: talk.id } }, select: { id: true },
+      });
+      if (existing) return { status: 409, message: "You are already on the waitlist." };
+      const count = await tx.talkReservation.count({ where: { talkId: talk.id } });
+      if (count < talk.room.capacity) return { status: 409, message: "Seats are available. Reserve a seat instead." };
+      const entry = await tx.waitlistEntry.create({
+        data: { userId: attendee.id, talkId: talk.id },
+      });
+      const position = await tx.waitlistEntry.count({ where: { talkId: talk.id } });
+      return { status: 201, entry, position };
+    });
+    if ("message" in result) { res.status(result.status).json({ message: result.message }); return; }
+    res.status(201).json({ message: "Added to waitlist.", position: result.position, entry: result.entry });
+  } catch (error) { serverError(res, error); }
+});
+
+// DELETE /api/reservations/talks/:talkId/waitlist
+router.delete("/talks/:talkId/waitlist", requireAuth, async (req: AuthRequest, res) => {
+  const parsed = uuidSchema.safeParse(req.params.talkId);
+  if (!parsed.success) { res.status(400).json({ message: "Invalid talk ID." }); return; }
+  try {
+    const attendee = await getAttendee(req.userId);
+    if (!attendee) { res.status(403).json({ message: "Attendee access required." }); return; }
+    const result = await prisma.$transaction(async tx => {
+      await lockTalk(tx, parsed.data);
+      return tx.waitlistEntry.deleteMany({ where: { talkId: parsed.data, userId: attendee.id } });
+    });
+    if (!result.count) { res.status(404).json({ message: "Waitlist entry not found." }); return; }
+    res.status(204).send();
+  } catch (error) { serverError(res, error); }
+});
+
 // POST /api/reservations/talks/:talkId { seatNumber: "A1" }
 // PATCH /api/reservations/talks/:talkId/seat { seatNumber: "B3" }
 async function reserveOrChange(req: AuthRequest, res: Response, change: boolean) {
@@ -120,7 +282,7 @@ async function reserveOrChange(req: AuthRequest, res: Response, change: boolean)
     const attendee = await getAttendee(req.userId);
     if (!attendee) { res.status(403).json({ message: "Attendee access required." }); return; }
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${parsedId.data}))::text AS lock_result`;
+      await lockTalk(tx, parsedId.data);
       const talk = await tx.talk.findUnique({
         where: { id: parsedId.data }, include: { room: true, conference: true },
       });
@@ -147,6 +309,8 @@ async function reserveOrChange(req: AuthRequest, res: Response, change: boolean)
       });
       if (seatTaken) return { status: 409, message: "This seat is already occupied." };
       if (!change) {
+        const queueCount = await tx.waitlistEntry.count({ where: { talkId: talk.id } });
+        if (queueCount > 0) return { status: 409, message: "This talk has a waitlist. New seats are reserved for waiting attendees." };
         const conflict = await tx.talkReservation.findFirst({
           where: { userId: attendee.id, talk: { startsAt: { lt: talk.endsAt }, endsAt: { gt: talk.startsAt } } },
           include: { talk: { select: { title: true } } },
@@ -174,12 +338,21 @@ router.delete("/talks/:talkId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const attendee = await getAttendee(req.userId);
     if (!attendee) { res.status(403).json({ message: "Attendee access required." }); return; }
-    const result = await prisma.talkReservation.deleteMany({ where: { userId: attendee.id, talkId: parsed.data } });
-    if (!result.count) { res.status(404).json({ message: "Reservation not found." }); return; }
+    const result = await prisma.$transaction(async tx => {
+      await lockTalk(tx, parsed.data);
+      const existing = await tx.talkReservation.findUnique({
+        where: { userId_talkId: { userId: attendee.id, talkId: parsed.data } },
+      });
+      if (!existing) return { status: 404, message: "Reservation not found." };
+      if (existing.checkedInAt) return { status: 409, message: "Checked-in tickets cannot be cancelled." };
+      await tx.talkReservation.delete({ where: { id: existing.id } });
+      const promoted = await promoteFromWaitlist(tx, parsed.data, existing.seatNumber);
+      return { status: 204, promotedUserId: promoted?.userId ?? null };
+    });
+    if ("message" in result) { res.status(result.status).json({ message: result.message }); return; }
     res.status(204).send();
   } catch (error) { serverError(res, error); }
 });
-
 
 const ticketSchema = z.object({
   reservationId: uuidSchema,

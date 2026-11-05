@@ -7,6 +7,7 @@ import path from "node:path";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { lockTalk, promoteFromWaitlist } from "./reservation.routes.js";
 import {
   requireAuth,
   type AuthRequest,
@@ -861,77 +862,75 @@ router.get(
   }
 );
 
-/* Cancel current user's registration */
+/* Cancel current user's registration and associated reservations */
+router.delete("/:id/registration", requireAuth, async (req: AuthRequest, res) => {
+  const conferenceId = req.params.id as string;
+  const userId = req.userId;
 
-router.delete(
-  "/:id/registration",
-  requireAuth,
-  async (req: AuthRequest, res) => {
-    const conferenceId = req.params.id as string;
-    const userId = req.userId;
-
-    if (!isValidId(conferenceId)) {
-      res.status(400).json({
-        message: "Invalid conference ID",
-      });
-      return;
-    }
-
-    if (!userId) {
-      res.status(401).json({
-        message: "Authentication required",
-      });
-      return;
-    }
-
-    try {
-      const existing =
-        await prisma.conferenceRegistration.findUnique({
-          where: {
-            userId_conferenceId: {
-              userId,
-              conferenceId,
-            },
-          },
-        });
-
-      if (!existing) {
-        res.status(404).json({
-          message: "Registration not found",
-        });
-        return;
-      }
-
-      await prisma.conferenceRegistration.delete({
-        where: {
-          userId_conferenceId: {
-            userId,
-            conferenceId,
-          },
-        },
-      });
-
-      res.json({
-        message: "Registration cancelled successfully",
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2025"
-      ) {
-        res.status(404).json({
-          message: "Registration not found",
-        });
-        return;
-      }
-
-      handleDatabaseError(
-        error,
-        res,
-        "Failed to cancel registration"
-      );
-    }
+  if (!isValidId(conferenceId)) {
+    res.status(400).json({ message: "Invalid conference ID" });
+    return;
   }
-);
+  if (!userId) {
+    res.status(401).json({ message: "Authentication required" });
+    return;
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Lock all conference talks in a stable order so seat promotion
+      // cannot race against normal reservation changes.
+      const talks = await tx.talk.findMany({
+        where: { conferenceId },
+        select: { id: true },
+        orderBy: { id: "asc" },
+      });
+      for (const talk of talks) {
+        await lockTalk(tx, talk.id);
+      }
+
+      const registration = await tx.conferenceRegistration.findUnique({
+        where: { userId_conferenceId: { userId, conferenceId } },
+        select: { id: true },
+      });
+      if (!registration) {
+        return { status: 404, message: "Registration not found" };
+      }
+
+      const reservations = await tx.talkReservation.findMany({
+        where: { userId, talk: { conferenceId } },
+        select: { id: true, talkId: true, seatNumber: true, checkedInAt: true },
+      });
+      if (reservations.some((reservation) => reservation.checkedInAt !== null)) {
+        return {
+          status: 409,
+          message: "Cannot cancel registration after a ticket has been checked in.",
+        };
+      }
+
+      // Remove this attendee from queues before freeing seats.
+      await tx.waitlistEntry.deleteMany({
+        where: { userId, talk: { conferenceId } },
+      });
+      await tx.talkReservation.deleteMany({
+        where: { userId, talk: { conferenceId } },
+      });
+      await tx.conferenceRegistration.delete({
+        where: { userId_conferenceId: { userId, conferenceId } },
+      });
+
+      // Promote eligible waiting attendees into the freed seats.
+      for (const reservation of reservations) {
+        await promoteFromWaitlist(tx, reservation.talkId, reservation.seatNumber);
+      }
+
+      return { status: 200, message: "Registration cancelled successfully" };
+    });
+
+    res.status(result.status).json({ message: result.message });
+  } catch (error) {
+    handleDatabaseError(error, res, "Failed to cancel registration");
+  }
+});
 
 export default router;
