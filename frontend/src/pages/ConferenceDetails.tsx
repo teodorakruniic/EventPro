@@ -24,8 +24,6 @@ import "./ConferenceDetails.css";
 import { useAuth } from "../context/AuthContext";
 import {
   getConferenceReservations,
-  reserveTalk,
-  cancelReservation,
 } from "../services/reservations";
 import SeatPicker from "../components/SeatPicker";
 
@@ -61,8 +59,8 @@ export default function ConferenceDetails() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [reservedTalkIds, setReservedTalkIds] = useState<string[]>([]);
-  const [busyTalkId, setBusyTalkId] = useState<string | null>(null);
-  const [reservationMessage, setReservationMessage] = useState("");
+  const [busyTalkId] = useState<string | null>(null);
+  const [reservationMessage] = useState("");
   const [reservationError, setReservationError] = useState("");
   const [selectedTalkId, setSelectedTalkId] = useState<string | null>(null);
 
@@ -220,36 +218,6 @@ export default function ConferenceDetails() {
     }
   }
 
-  async function handleTalkReservation(talkId: string) {
-    if (!registered || processing || busyTalkId) return;
-
-    const isReserved = reservedTalkIds.includes(talkId);
-    setBusyTalkId(talkId);
-    setReservationError("");
-    setReservationMessage("");
-
-    try {
-      if (isReserved) {
-        await cancelReservation(talkId);
-        setReservedTalkIds((current) =>
-          current.filter((item) => item !== talkId)
-        );
-        setReservationMessage("Reservation cancelled successfully.");
-      } else {
-        await reserveTalk(talkId);
-        setReservedTalkIds((current) =>
-          current.includes(talkId) ? current : [...current, talkId]
-        );
-        setReservationMessage("Seat reserved successfully! Check My Schedule.");
-      }
-    } catch (err) {
-      setReservationError(
-        err instanceof Error ? err.message : "Unable to update reservation."
-      );
-    } finally {
-      setBusyTalkId(null);
-    }
-  }
 
   if (loading) {
     return (
