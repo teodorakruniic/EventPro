@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter,
   Routes,
@@ -24,6 +23,7 @@ import ReviewTalks from "./pages/ReviewTalks";
 
 import ConferenceSchedule from "./pages/ConferenceSchedule";
 import ConferenceProgram from "./pages/ConferenceProgram";
+import ConferenceStatistics from "./pages/ConferenceStatistics";
 import MySchedule from "./pages/MySchedule";
 import MyProfile from "./pages/MyProfile";
 import OrganizerCheckIn from "./pages/OrganizerCheckIn";
@@ -186,6 +186,15 @@ function AppRoutes() {
           element={
             <OrganizerRoute>
               <ConferenceSchedule />
+            </OrganizerRoute>
+          }
+        />
+
+        <Route
+          path="/statistics"
+          element={
+            <OrganizerRoute>
+              <ConferenceStatistics />
             </OrganizerRoute>
           }
         />
