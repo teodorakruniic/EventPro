@@ -26,6 +26,7 @@ import ConferenceSchedule from "./pages/ConferenceSchedule";
 import ConferenceProgram from "./pages/ConferenceProgram";
 import MySchedule from "./pages/MySchedule";
 import MyProfile from "./pages/MyProfile";
+import OrganizerCheckIn from "./pages/OrganizerCheckIn";
 
 import "./App.css";
 
@@ -185,6 +186,15 @@ function AppRoutes() {
           element={
             <OrganizerRoute>
               <ConferenceSchedule />
+            </OrganizerRoute>
+          }
+        />
+
+        <Route
+          path="/check-in"
+          element={
+            <OrganizerRoute>
+              <OrganizerCheckIn />
             </OrganizerRoute>
           }
         />

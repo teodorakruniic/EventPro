@@ -660,3 +660,113 @@
     margin-right: 0 !important;
   }
 }
+/* Automatic waitlist */
+.seat-picker-waitlist {
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  background: #f5f7ff;
+}
+.seat-picker-waitlist-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #4338ca;
+}
+.seat-picker-waitlist-heading strong {
+  display: block;
+  font-size: 15px;
+  color: #1e293b;
+}
+.seat-picker-waitlist-heading p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.seat-picker-waitlist-position {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 15px 0;
+  font-size: 14px;
+  color: #475569;
+}
+.seat-picker-waitlist-position strong {
+  font-size: 18px;
+  color: #4338ca;
+}
+.seat-picker-waitlist-join,
+.seat-picker-waitlist-leave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.seat-picker-waitlist-join {
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid #4f46e5;
+}
+.seat-picker-waitlist-join:hover:not(:disabled) {
+  background: #4338ca;
+}
+.seat-picker-waitlist-leave {
+  background: #fff;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.seat-picker-waitlist-leave:hover:not(:disabled) {
+  background: #fee2e2;
+}
+.seat-picker-waitlist button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.seat-picker-error {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #b42318;
+  margin-top: 12px;
+}
+/* Explicit classes avoid styling the wrong button when waitlist changes the footer. */
+.seat-picker-actions .seat-picker-refresh {
+  margin-right: auto !important;
+  background: #fff;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.seat-picker-actions .seat-picker-cancel,
+.seat-picker-actions button.seat-picker-cancel:nth-child(2) {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+.seat-picker-actions .seat-picker-confirm,
+.seat-picker-actions button.seat-picker-confirm:nth-child(2) {
+  background: #4f46e5;
+  border: 1px solid #4f46e5;
+  color: #fff;
+}
+.seat-picker-actions .seat-picker-confirm:disabled,
+.seat-picker-actions button.seat-picker-confirm:nth-child(2):disabled {
+  background: #eef2ff;
+  border-color: #e0e7ff;
+  color: #a5b4fc;
+}
+@media (max-width: 600px) {
+  .seat-picker-actions .seat-picker-refresh {
+    margin-right: 0 !important;
+  }
+  .seat-picker-waitlist-join,
+  .seat-picker-waitlist-leave {
+    width: 100%;
+  }
+}
