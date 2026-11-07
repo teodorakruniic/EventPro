@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import {
   Armchair,
   CalendarDays,
+  CalendarPlus,
   Clock3,
   DoorOpen,
   MapPin,
@@ -46,6 +47,46 @@ function formatTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function googleCalendarUrl(reservation: ReservationWithSeat): string | null {
+  const { talk } = reservation;
+  if (!talk.startsAt || !talk.endsAt) return null;
+
+  const start = new Date(talk.startsAt);
+  const end = new Date(talk.endsAt);
+  if (
+    !Number.isFinite(start.getTime()) ||
+    !Number.isFinite(end.getTime()) ||
+    end.getTime() <= start.getTime()
+  ) {
+    return null;
+  }
+
+  const toCalendarDate = (date: Date) =>
+    date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+  const details = [
+    talk.description,
+    `Conference: ${talk.conference.title}`,
+    `Speaker: ${talk.speaker.firstName} ${talk.speaker.lastName}`,
+    talk.room?.name ? `Room: ${talk.room.name}` : null,
+    reservation.seatNumber ? `Seat: ${reservation.seatNumber}` : null,
+  ].filter(Boolean).join("\n\n");
+
+  const location = [talk.conference.location, talk.room?.name]
+    .filter(Boolean)
+    .join(", ");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: talk.title,
+    dates: `${toCalendarDate(start)}/${toCalendarDate(end)}`,
+    details,
+    location,
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 export default function MySchedule() {
@@ -320,6 +361,18 @@ export default function MySchedule() {
                   >
                     View Program
                   </Link>
+
+                  {googleCalendarUrl(reservation) && (
+                    <a
+                      href={googleCalendarUrl(reservation)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="schedule-secondary-button"
+                    >
+                      <CalendarPlus size={16} />
+                      Add to Google Calendar
+                    </a>
+                  )}
 
                   {!isPast && (
                     <button
